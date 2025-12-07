@@ -1,14 +1,14 @@
 #pragma once
 
 #if defined (_MSC_VER)
-#define FORCE_INLINE __forceinline
+#define VX_FORCE_INLINE __forceinline
 #else
-#define FORCE_INLINE inline
+#define VX_FORCE_INLINE inline
 #endif // defined (_MSVC_VER)
 
-#define USE_SIMD_SSE 1
+#define VX_USE_SSE 1
 
-#if defined(USE_SIMD_SSE)
+#if defined(VX_USE_SSE)
 #include <xmmintrin.h>
 #endif // defined(USE_SIMD_SSE)
 
@@ -30,5 +30,7 @@ static float Get_m128Lane(const __m128& v, int idx)
 
 
 //forward declare
-class Vec3;
-class Vec4;
+namespace vx {
+	class Vec3;
+	class Vec4;
+}
