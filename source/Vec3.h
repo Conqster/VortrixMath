@@ -87,6 +87,11 @@ namespace vx
 		VX_FORCE_INLINE static Vec3 Min(const Vec3& lhs, const Vec3& rhs);
 		VX_FORCE_INLINE static Vec3 Max(const Vec3& lhs, const Vec3& rhs);
 
+		/// Comparison
+		VX_FORCE_INLINE bool operator == (const Vec3& rhs) const;
+		VX_FORCE_INLINE bool operator != (const Vec3& rhs) const { return !(*this == rhs); }
+
+
 		VX_FORCE_INLINE float Dot(const Vec3& rhs) const;
 		/// <summary>
 		/// Computes the dot product of two 4-dimensional vectors.

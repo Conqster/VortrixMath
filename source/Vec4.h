@@ -53,6 +53,21 @@ namespace vx
 #endif // USE_SIMD_SSE
 
 		}
+
+		/// w = z
+		Vec4(float _x, float _y, float _z) 
+		{
+#if VX_USE_SSE
+			mValue = _mm_setr_ps(_x, _y, _z, _z);
+#else
+			mData32[0] = _x;
+			mData32[1] = _y;
+			mData32[2] = _z;
+			mData32[3] = _z;
+#endif // USE_SIMD_SSE
+
+		}
+
 		explicit Vec4(float scalar)
 		{
 #if VX_USE_SSE
@@ -85,6 +100,15 @@ namespace vx
 		VX_FORCE_INLINE static Vec4 Zero();
 		VX_FORCE_INLINE void ToZero();
 
+		VX_FORCE_INLINE static Vec4 One() { return Vec4(1.0f); }
+		VX_FORCE_INLINE Vec4 Abs() const;
+		VX_FORCE_INLINE Vec4 Sign() const;
+
+		/// IsNaN
+		/// checks is this vector contains a component which is NaN
+		VX_FORCE_INLINE bool IsNaN() const;
+
+		//VPHX_INLINE Vec3 SplatX() const;
 		VX_FORCE_INLINE static Vec4 Broadcast(float scalar);
 
 		VX_FORCE_INLINE static Vec4 LoadAligned(const float* v);
@@ -99,8 +123,10 @@ namespace vx
 		VX_FORCE_INLINE Vec4& operator*=(const float scalar);
 		/// for testing vexctorised division
 		VX_FORCE_INLINE Vec4 Divide(const float scalar);
-		Vec4 operator/(const float scalar) const;
-		Vec4& operator/=(const float scalar);
+		VX_FORCE_INLINE Vec4 operator/(const float scalar) const;
+		/// coponent wisw
+		VX_FORCE_INLINE Vec4 operator/(const Vec4& rhs) const;
+		VX_FORCE_INLINE Vec4& operator/=(const float scalar);
 
 		VX_FORCE_INLINE float MinComponent() const;
 		VX_FORCE_INLINE float MaxComponent() const;
@@ -110,6 +136,10 @@ namespace vx
 
 		VX_FORCE_INLINE static Vec4 Min(const Vec4& lhs, const Vec4& rhs);
 		VX_FORCE_INLINE static Vec4 Max(const Vec4& lhs, const Vec4& rhs);
+
+		/// Comparison
+		VX_FORCE_INLINE bool operator == (const Vec4& rhs) const;
+		VX_FORCE_INLINE bool operator != (const Vec4& rhs) const { return !(*this == rhs); }
 
 		VX_FORCE_INLINE float Dot(const Vec4& rhs) const;
 		/// <summary>
@@ -130,6 +160,10 @@ namespace vx
 
 		VX_FORCE_INLINE Vec4 Inverted() const;
 		VX_FORCE_INLINE Vec4& Invert();
+
+		/// Reciprocal
+		/// @eturns a reciprocated vector of this vector (1/this)
+		VX_FORCE_INLINE Vec4 Reciprocal() const;
 
 		VX_FORCE_INLINE static Vec3 Cross3_NOT_SIMD(const Vec4& lhs, const Vec4& rhs);
 		VX_FORCE_INLINE static Vec3 Cross3(const Vec4& lhs, const Vec4& rhs);

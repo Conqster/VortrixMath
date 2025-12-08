@@ -251,6 +251,28 @@ namespace vx
 
 	}
 
+
+	VX_FORCE_INLINE bool Vec3::operator == (const Vec3& rhs) const
+	{
+#if VX_USE_SSE
+		__m128i cmp = _mm_castps_si128(_mm_cmpeq_ps(mValue, rhs.mValue));
+		int mask = _mm_movemask_ps(_mm_castsi128_ps(cmp));
+		return (mask & 0b111) == 0b111; //only x,y,z lane
+#else
+		uint32_t v[4];
+		v[0] = mData32[0] == rhs.mData32[0] ? 0xffffffffu : 0;
+		v[1] = mData32[1] == rhs.mData32[1] ? 0xffffffffu : 0;
+		v[2] = mData32[2] == rhs.mData32[2] ? 0xffffffffu : 0;
+		v[3] = v[2];
+
+		int mask = (v[0] >> 31) |
+			((v[1] >> 31) << 1) |
+			((v[2] >> 31) << 2) |
+			((v[3] >> 31) << 3);
+		return (mask == 0b111) == 0b111;
+#endif // USE_SIMD_SSE
+	}
+
 	inline VX_FORCE_INLINE float Vec3::Dot(const Vec3& rhs) const
 	{
 #if VX_USE_SIMD_SSE

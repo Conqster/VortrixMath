@@ -1,6 +1,6 @@
 #vs community tmp files
 .vs/
-/*.vcxproj
+*.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
 /*.dir
@@ -9,15 +9,14 @@
 #vs 26
 *slnx
 
-
 #cmake generated files
 CMakeFiles/
 *CMakeCache.txt
-/*.cmake
+*.cmake
 
 
 #Build resukt
-/Debug
+Debug
 /Release
 /x64
 /x86
