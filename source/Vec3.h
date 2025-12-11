@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "VxMath.h"
 
 
 namespace vx
@@ -20,49 +21,45 @@ namespace vx
 	class alignas(16) Vec3
 	{
 	public:
-		union
-		{
-			float mData32[4];
-			__m128 mValue;
-		};
 
-		Vec3()
-		{
-#if VX_USE_SSE
-			mValue = _mm_setzero_ps();
-			for (int i = 0; i < 4; i++)
-				mData32[i] = 0;
-#else
-#endif // USE_SIMD_SSE
+		Vec3();
+		Vec3(float x, float y, float z);
+		explicit Vec3(float scalar);
+		Vec3(const Vec3& rhs) = default;
+		Vec3(const Vec4& rhs);
+		Vec3(__m128 vec);
 
-		}
-		Vec3(float x, float y, float z)
-		{
-			mValue = _mm_set_ps(z, z, y, x);
-		}
-		explicit Vec3(float scalar)
-		{
-			mValue = _mm_set1_ps(scalar);
-		}
-		Vec3(__m128 vec) : mValue(vec) {}
 
-#if VX_USE_SSE
-		VX_FORCE_INLINE float X() const { return _mm_cvtss_f32(mValue); }
-		VX_FORCE_INLINE float Y() const { return _mm_cvtss_f32(_mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(1, 1, 1, 1))); }
-		VX_FORCE_INLINE float Z() const { return _mm_cvtss_f32(_mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(2, 2, 2, 2))); }
-#else
+		VX_FORCE_INLINE float X() const { return mFloat[0]; }
+		VX_FORCE_INLINE float Y() const { return mFloat[1]; }
+		VX_FORCE_INLINE float Z() const { return mFloat[2]; }
 
-		FORCE_INLINE float X() const { return mData32[0]; }
-		FORCE_INLINE float Y() const { return mData32[1]; }
-		FORCE_INLINE float Z() const { return mData32[2]; }
-#endif // USE_SIMD_SSE
+		VX_FORCE_INLINE void SetX(float v) { mFloat[0] = v; }
+		VX_FORCE_INLINE void SetY(float v) { mFloat[1] = v; }
+		VX_FORCE_INLINE void SetZ(float v) { mFloat[2] = v; }
+
+		__m128 Value() const;
+
+		VX_FORCE_INLINE float& operator[](uint32_t i);
+		VX_FORCE_INLINE float const& operator[](uint32_t i) const;
 
 		VX_FORCE_INLINE static float GetLane(const Vec3& v, int idx);
 
-		VX_FORCE_INLINE static Vec3 Zero();
 		VX_FORCE_INLINE void ToZero();
+		VX_FORCE_INLINE static Vec3 Zero();
+		VX_FORCE_INLINE static Vec3 One() { return Vec3(1.0f); }
+		VX_FORCE_INLINE static const Vec3 Up() { return Vec3(0.0f, 1.0f, 0.0f); }
+		VX_FORCE_INLINE static const Vec3 Right() { return Vec3(1.0f, 0.0f, 0.0f); }
+		VX_FORCE_INLINE static const Vec3 Forward() { return Vec3(0.0f, 0.0f, 1.0f); }
 
-		VX_FORCE_INLINE static Vec3 Broadcast(float scalar);
+		VX_FORCE_INLINE Vec3 Abs() const;
+		VX_FORCE_INLINE Vec3 Sign() const;
+		/// IsNaN
+		/// checks is this vector contains a component which is NaN
+		VX_FORCE_INLINE bool IsNaN() const;
+		VX_FORCE_INLINE bool IsZero(float eps = 1e-6f) const;
+		VX_FORCE_INLINE bool IsApprox(const Vec3& rhs, float eps_sq = 1e-12f);
+
 		VX_FORCE_INLINE Vec3 LoadAligned(const float* v);
 		VX_FORCE_INLINE Vec3 Load(const float* v);
 		VX_FORCE_INLINE void Store(float* o_v) const;
@@ -72,10 +69,14 @@ namespace vx
 		VX_FORCE_INLINE Vec3 operator-(const Vec3& rhs) const;
 		VX_FORCE_INLINE Vec3& operator -=(const Vec3& rhs);
 		VX_FORCE_INLINE Vec3 operator*(const float scalar) const;
+		///component wise multiply
+		VX_FORCE_INLINE Vec3 operator*(const Vec3& rhs) const;
 		VX_FORCE_INLINE Vec3& operator*=(const float scalar);
-		/// for testing vexctorised division
-		VX_FORCE_INLINE Vec3 Divide(const float scalar);
+		VX_FORCE_INLINE Vec3& operator*=(const Vec3& rhs);
+
 		Vec3 operator/(const float scalar) const;
+		/// coponent wisw
+		VX_FORCE_INLINE Vec3 operator/(const Vec3& rhs) const;
 		Vec3& operator/=(const float scalar);
 
 		VX_FORCE_INLINE float MinComponent() const;
@@ -86,6 +87,7 @@ namespace vx
 
 		VX_FORCE_INLINE static Vec3 Min(const Vec3& lhs, const Vec3& rhs);
 		VX_FORCE_INLINE static Vec3 Max(const Vec3& lhs, const Vec3& rhs);
+		VX_FORCE_INLINE static Vec3 Clamp(const Vec3& v, const Vec3& min, const Vec3& max);
 
 		/// Comparison
 		VX_FORCE_INLINE bool operator == (const Vec3& rhs) const;
@@ -105,20 +107,25 @@ namespace vx
 		VX_FORCE_INLINE float LengthSq() const;
 		VX_FORCE_INLINE float Length() const;
 
-		VX_FORCE_INLINE Vec3 Normalised_NOT_SIMD() const;
 		VX_FORCE_INLINE Vec3 Normalised() const;
 		VX_FORCE_INLINE Vec3& Normalise();
 
 		VX_FORCE_INLINE Vec3 Inverted() const;
 		VX_FORCE_INLINE Vec3& Invert();
 
-		VX_FORCE_INLINE static Vec3 Cross_NOT_SIMD(const Vec3& lhs, const Vec3& rhs);
-		VX_FORCE_INLINE static Vec3 Cross(const Vec3& lhs, const Vec3& rhs);
+		/// Reciprocal
+		/// @eturns a reciprocated vector of this vector (1/this)
+		VX_FORCE_INLINE Vec3 Reciprocal() const;
+
+		VX_FORCE_INLINE static Vec3 Broadcast(float scalar);
+		VX_FORCE_INLINE Vec3 SplatX() const;
+		VX_FORCE_INLINE Vec3 SplatY() const;
+		VX_FORCE_INLINE Vec3 SplatZ() const;
+
 		/// solve cross on x, y, z, first three lane
 		/// and store on first three lane,
 		/// fourth lane (w) constant
-		/// 
-		//FORCE_INLINE Vec3& Cross3(const Vec4& rhs);
+		VX_FORCE_INLINE static Vec3 Cross(const Vec3& lhs, const Vec3& rhs);
 
 
 		VX_FORCE_INLINE friend std::ostream& operator<<(std::ostream& os, const Vec3& v)
@@ -126,6 +133,13 @@ namespace vx
 			os << "Vec3(" << v.X() << ", " << v.Y() << ", " << v.Z() << ")";
 			return os;
 		}
+
+	private:
+		union
+		{
+			float mFloat[4];
+			__m128 mValue;
+		};
 	};
 }
 #include "Vec3.inl"

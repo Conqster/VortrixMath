@@ -6,11 +6,17 @@
 #define VX_FORCE_INLINE inline
 #endif // defined (_MSVC_VER)
 
-#define VX_USE_SSE 1
-
 #if defined(VX_USE_SSE)
 #include <xmmintrin.h>
-#endif // defined(USE_SIMD_SSE)
+
+#include <iostream>
+
+#define VX_ASSERT(expr, ...) \
+		do { if(!(expr)) { \
+				std::cout << "Assertion Failed (" << #expr << "): \nMessage: " << __VA_ARGS__ << ".\nFile: " << __FILE__ << ".\nLine: " << __LINE__ << ".\n"; \
+				__debugbreak(); \
+		 } } while (0)
+
 
 
 static float Get_m128Lane(const __m128& v, int idx)
@@ -25,8 +31,8 @@ static float Get_m128Lane(const __m128& v, int idx)
 	}
 }
 
+#endif // defined(USE_SIMD_SSE)
 
-#include <iostream>
 
 
 //forward declare
@@ -34,3 +40,5 @@ namespace vx {
 	class Vec3;
 	class Vec4;
 }
+
+

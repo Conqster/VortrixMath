@@ -9,26 +9,47 @@ project(VortrixMath VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(VX_DIR ${CMAKE_SOURCE_DIR})
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/CMakeModules")
+
+option(USE_SSE "Enable SSE" ON)
+option(BUILD_TESTS "build unit tests" ON)
+option(BUILD_PLAYGROUND "build playground" ON)
+
 
 #maths library 
-add_library(VortrixMath INTERFACE)
-target_include_directories(VortrixMath INTERFACE ${PROJECT_SOURCE_DIR}/source)
+include(VortrixMath)	
 
 
 #test program
-option(BUILD_TESTS "build the example/test executable" on)
 if(BUILD_TESTS)
-	add_subdirectory(tests)
-	#file(GLOB_RECURSE VortrixMathTest_SRC "tests/*.cpp" "tests/*.h")
-	#add_executable(VortrixMathTest ${VortrixMathTest_SRC})
-	#target_link_libraries(VortrixMathTest PRIVATE VortrixMath)
-	#set_target_properties(VortrixMathTest PROPERTIES
-	#	VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-	#	)
+	include(UnitTests)
+endif()
+
+if(BUILD_PLAYGROUND)
+	include(VortrixPlayground)
 endif()
 
 #vs startup project
-if(MSVC AND BUILD_TESTS)
-	 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-			 PROPERTY VS_STARTUP_PROJECT VortrixMathTests)
+if(MSVC)
+			
+	if(BUILD_PLAYGROUND)
+		set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+			 PROPERTY VS_STARTUP_PROJECT VortrixPlayground)
+			 
+		if(BUILD_TESTS)
+		
+			add_custom_command(TARGET VortrixPlayground
+				PRE_BUILD
+				COMMAND $<TARGET_FILE:VortrixMathTests>
+				COMMENT "Running unit tests before playground"
+				)
+		endif()
+		
+	elseif(BUILD_TESTS)
+		set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+					PROPERTY VS_STARTUP_PROJECT VortrixMathTests)
+	endif()
+	 
  endif()
+ 

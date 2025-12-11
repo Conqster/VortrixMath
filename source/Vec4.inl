@@ -3,19 +3,82 @@
 
 namespace vx
 {
+	inline Vec4::Vec4()
+	{
+#ifdef VX_USE_SSE
+		mValue = _mm_setzero_ps();
+#else
+		for (int i = 0; i < 4; i++)
+			mFloat[i] = 0;
+#endif // USE_SIMD_SSE
+	}
+	inline Vec4::Vec4(float x, float y, float z, float w)
+	{
+#ifdef VX_USE_SSE
+		mValue = _mm_setr_ps(x, y, z, w);
+#else
+		mFloat[0] = x;
+		mFloat[1] = y;
+		mFloat[2] = z;
+		mFloat[3] = w;
+#endif // USE_SIMD_SSE
+
+	}
+	inline Vec4::Vec4(float x, float y, float z)
+	{
+#ifdef VX_USE_SSE
+		mValue = _mm_setr_ps(x, y, z, z);
+#else
+		mFloat[0] = x;
+		mFloat[1] = y;
+		mFloat[2] = z;
+		mFloat[3] = z;
+#endif // USE_SIMD_SSE
+	}
+
+	inline Vec4::Vec4(float scalar)
+	{
+#ifdef VX_USE_SSE
+		mValue = _mm_set1_ps(scalar);
+#else
+		for (int i = 0; i < 4; i++)
+			mFloat[i] = scalar;
+#endif // USE_SIMD_SSE
+	}
+
+	VX_FORCE_INLINE __m128 Vec4::Value() const
+	{
+#ifdef VX_USE_SSE
+		return mValue;
+#else
+		return _mm_load_ps(mFloat);
+#endif // VX_USE_SSE
+	}
+
+	inline VX_FORCE_INLINE float& Vec4::operator[](uint32_t i)
+	{
+		VX_ASSERT(i < 4, "Trying to access invalid Vec4 index");
+		return mFloat[i];
+	}
+	inline VX_FORCE_INLINE float const& Vec4::operator[](uint32_t i) const
+	{
+		VX_ASSERT(i < 4, "Trying to access invalid Vec4 index");
+		return mFloat[i];
+	}
 	inline VX_FORCE_INLINE float Vec4::GetLane(const Vec4& v, int idx)
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		return Get_m128Lane(v.mValue, idx);
 #else
-		return v.mData32[idx];
+		return v.mFloat[idx];
 #endif // USE_SIMD_SSE
 	}
 
 	inline VX_FORCE_INLINE Vec4 Vec4::Zero()
 	{
-#if VX_USE_SSE
-		return Vec4(_mm_setzero_ps());
+#ifdef VX_USE_SSE
+		//return Vec4(_mm_setzero_ps());
+		return _mm_setzero_ps();
 #else
 		return Vec4(0.0f);
 #endif // USE_SIMD_SSE
@@ -23,49 +86,56 @@ namespace vx
 
 	inline VX_FORCE_INLINE void Vec4::ToZero()
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		mValue = _mm_setzero_ps();
 #else
 		for (int i = 0; i < 4; i++)
-			mData32[i] = 0.0f;
+			mFloat[i] = 0.0f;
 #endif // USE_SIMD_SSE
 	}
 
 	VX_FORCE_INLINE Vec4 Vec4::Abs() const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		return _mm_max_ps(_mm_sub_ps(_mm_setzero_ps(), mValue), mValue);
 #else
-		return Vec4(std::fabs(mData32[0]), std::fabs(mData32[1]), fabs(mData32[2]), fabs(mData32[3]));
+		return Vec4(std::fabs(mFloat[0]), std::fabs(mFloat[1]), fabs(mFloat[2]), fabs(mFloat[3]));
 #endif // USE_SIMD_SSE
 	}
 
 	VX_FORCE_INLINE Vec4 Vec4::Sign() const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		return _mm_or_ps(_mm_and_ps(mValue, _mm_set_ps1(-1.0f)), _mm_set_ps1(1.0f));
 #else
-		return Vec4(std::copysign(1.0f, mData32[0]), std::copysign(1.0f, mData32[1]), std::copysign(1.0f, mData32[2]), std::copysign(1.0f, mData32[3]));
+		return Vec4(std::copysign(1.0f, mFloat[0]), std::copysign(1.0f, mFloat[1]), std::copysign(1.0f, mFloat[2]), std::copysign(1.0f, mFloat[3]));
 #endif // USE_SIMD_SSE
 	}
 
 	VX_FORCE_INLINE bool Vec4::IsNaN() const
 	{
-		return (std::isnan(mData32[0]) || std::isnan(mData32[1]) || std::isnan(mData32[2]), std::isnan(mData32[3]));
+		return (std::isnan(mFloat[0]) || 
+			    std::isnan(mFloat[1]) ||
+				std::isnan(mFloat[2]) ||
+				std::isnan(mFloat[3]));
 	}
 
-	inline VX_FORCE_INLINE Vec4 Vec4::Broadcast(float scalar)
+	inline VX_FORCE_INLINE bool Vec4::IsZero(float eps) const
 	{
-#if VX_USE_SSE
-		return _mm_set_ps1(scalar);
-#else
-		return Vec4(scalar, scalar, scalar, scalar);
-#endif // USE_SIMD_SSE
+		return mFloat[0] <= eps &&
+			mFloat[1] <= eps &&
+			mFloat[2] <= eps &&
+			mFloat[3] <= eps;
+	}
+
+	inline VX_FORCE_INLINE bool Vec4::IsApprox(const Vec4& rhs, float eps_sq)
+	{
+		return (rhs - *this).LengthSq() <= eps_sq;
 	}
 
 	inline VX_FORCE_INLINE Vec4 Vec4::LoadAligned(const float* v)
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		return _mm_load_ps(v);
 #else
 		return Vec4(v[0], v[1], v[2], v[3]);
@@ -75,7 +145,7 @@ namespace vx
 
 	inline VX_FORCE_INLINE Vec4 Vec4::Load(const float* v)
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		return _mm_loadu_ps(v);
 #else
 		return Vec4(v[0], v[1], v[2], v[3]);
@@ -84,7 +154,7 @@ namespace vx
 
 	inline VX_FORCE_INLINE void Vec4::Store(float* o_v) const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		_mm_store_ps(o_v, mValue);
 #else
 #warning not store not support without SIMD
@@ -94,23 +164,23 @@ namespace vx
 
 	inline VX_FORCE_INLINE Vec4 Vec4::operator+(const Vec4& rhs) const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		return _mm_add_ps(mValue, rhs.mValue);
 #else
-		return Vec4(mData32[0] + rhs.mData32[0],
-			mData32[1] + rhs.mData32[1],
-			mData32[2] + rhs.mData32[2],
-			mData32[3] + rhs.mData32[3]);
+		return Vec4(mFloat[0] + rhs.mFloat[0],
+			mFloat[1] + rhs.mFloat[1],
+			mFloat[2] + rhs.mFloat[2],
+			mFloat[3] + rhs.mFloat[3]);
 #endif // USE_SIMD_SSE
 	}
 
 	inline VX_FORCE_INLINE Vec4& Vec4::operator+=(const Vec4& rhs)
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		mValue = _mm_add_ps(mValue, rhs.mValue);
 #else
 		for (int i = 0; i < 4; ++i)
-			mData32[i] += rhs.mData32[i];
+			mFloat[i] += rhs.mFloat[i];
 #endif // USE_SIMD_SSE
 
 		return *this;
@@ -118,23 +188,23 @@ namespace vx
 
 	inline VX_FORCE_INLINE Vec4 Vec4::operator-(const Vec4& rhs) const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		return _mm_sub_ps(this->mValue, rhs.mValue);
 #else
-		return Vec4(mData32[0] - rhs.mData32[0],
-			mData32[1] - rhs.mData32[1],
-			mData32[2] - rhs.mData32[2],
-			mData32[3] - rhs.mData32[3]);
+		return Vec4(mFloat[0] - rhs.mFloat[0],
+			mFloat[1] - rhs.mFloat[1],
+			mFloat[2] - rhs.mFloat[2],
+			mFloat[3] - rhs.mFloat[3]);
 #endif // USE_SIMD_SSE
 	}
 
 	inline VX_FORCE_INLINE Vec4& Vec4::operator-=(const Vec4& rhs)
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		mValue = _mm_sub_ps(this->mValue, rhs.mValue);
 #else
 		for (int i = 0; i < 4; ++i)
-			mData32[i] -= rhs.mData32[i];
+			mFloat[i] -= rhs.mFloat[i];
 #endif // USE_SIMD_SSE
 
 		return *this;
@@ -142,41 +212,58 @@ namespace vx
 
 	inline VX_FORCE_INLINE Vec4 Vec4::operator*(const float scalar) const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		//broad cast or load scalar
 		return _mm_mul_ps(mValue, _mm_set_ps1(scalar));
 #else
-		return Vec4(mData32[0] * scalar,
-			mData32[1] * scalar,
-			mData32[2] * scalar,
-			mData32[3] * scalar);
+		return Vec4(mFloat[0] * scalar,
+			mFloat[1] * scalar,
+			mFloat[2] * scalar,
+			mFloat[3] * scalar);
 #endif // USE_SIMD_SSE
+	}
+
+	inline VX_FORCE_INLINE Vec4 Vec4::operator*(const Vec4& rhs) const
+	{
+#ifdef VX_USE_SSE
+		//broad cast or load scalar
+		return _mm_mul_ps(mValue, rhs.mValue);
+#else
+		return Vec4(mFloat[0] * rhs.mFloat[0],
+			mFloat[1] * rhs.mFloat[1],
+			mFloat[2] * rhs.mFloat[2],
+			mFloat[3] * rhs.mFloat[3]);
+#endif // VX_USE_SSE
 	}
 
 	inline VX_FORCE_INLINE Vec4& Vec4::operator*=(const float scalar)
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		mValue = _mm_mul_ps(mValue, _mm_set_ps1(scalar));
 #else
 		for (int i = 0; i < 4; ++i)
-			mData32[i] *= scalar;
+			mFloat[i] *= scalar;
 #endif // USE_SIMD_SSE
 
 		return *this;
 	}
 
-	inline VX_FORCE_INLINE Vec4 Vec4::Divide(const float scalar)
+	inline VX_FORCE_INLINE Vec4& Vec4::operator*=(const Vec4& rhs)
 	{
-		Vec4 t = *this;
-		const float inv = 1.0f / scalar;
+#ifdef VX_USE_SSE
+		//broad cast or load scalar
+		mValue = _mm_mul_ps(mValue, rhs.mValue);
+#else
 		for (int i = 0; i < 4; ++i)
-			t.mData32[i] *= inv;
-		return t;
+			mFloat[i] *= rhs.mFloat[i];
+#endif // VX_USE_SSE
+
+		return *this;
 	}
 
 	inline Vec4 Vec4::operator/(const float scalar) const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		//return _mm_div_ps(value, _mm_set_ps1(scalar));//<- expensive div per lane
 		//return _mm_mul_ps(value, _mm_set_ps1(1.0f /scalar)); <- loss precision due 1/s, most case fastest 
 
@@ -185,33 +272,33 @@ namespace vx
 		return _mm_mul_ps(mValue, _mm_shuffle_ps(v, v, _MM_SHUFFLE(0, 0, 0, 0)));
 		return _mm_mul_ps(mValue, _mm_set_ps1(scalar));
 #else
-		return Vec4(mData32[0] / scalar,
-			mData32[1] / scalar,
-			mData32[2] / scalar,
-			mData32[3] / scalar);
+		return Vec4(mFloat[0] / scalar,
+			mFloat[1] / scalar,
+			mFloat[2] / scalar,
+			mFloat[3] / scalar);
 #endif // USE_SIMD_SSE
 	}
 
 
 	Vec4 Vec4::operator/(const Vec4& rhs) const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		//return _mm_div_ps(value, _mm_set_ps1(scalar));//<- expensive div per lane
 		//return _mm_mul_ps(value, _mm_set_ps1(1.0f /scalar)); <- loss precision due 1/s, most case fastest 
 
 		//one lane division, shuffle x lane across, then mul
 		return _mm_div_ps(mValue, rhs.mValue);
 #else
-		return Vec4(mData32[0] / rhs.mData32[0],
-			mData32[1] / rhs.mData32[1],
-			mData32[2] / rhs.mData32[2],
-			mData32[3] / rhs.mData32[3]);
+		return Vec4(mFloat[0] / rhs.mFloat[0],
+			mFloat[1] / rhs.mFloat[1],
+			mFloat[2] / rhs.mFloat[2],
+			mFloat[3] / rhs.mFloat[3]);
 #endif // USE_SIMD_SSE
 	}
 
 	inline Vec4& Vec4::operator/=(const float scalar)
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		//return _mm_div_ps(value, _mm_set_ps1(scalar));//<- expensive div per lane
 		//return _mm_mul_ps(value, _mm_set_ps1(1.0f /scalar)); <- loss precision due 1/s, most case fastest 
 
@@ -220,7 +307,7 @@ namespace vx
 		mValue = _mm_mul_ps(mValue, _mm_shuffle_ps(v, v, _MM_SHUFFLE(0, 0, 0, 0)));
 #else
 		for (int i = 0; i < 4; ++i)
-			mData32[i] /= scalar;
+			mFloat[i] /= scalar;
 #endif // USE_SIMD_SSE
 
 		return *this;
@@ -228,7 +315,7 @@ namespace vx
 
 	inline VX_FORCE_INLINE float Vec4::MinComponent() const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		//__m128 shuf1 = _mm_shuffle_ps(value, value, _MM_SHUFFLE(2, 3, 0, 1)); // y z w x
 		//__m128 min1 = _mm_min_ps(value, shuf1); // min(x,y) min(y,z) min(z,w) min(w,x)
 		//__m128 shuf2 = _mm_shuffle_ps(min1, min1, _MM_SHUFFLE(1, 0, 3, 2)); // z w x y
@@ -242,18 +329,18 @@ namespace vx
 #else
 		return (X() < Y()) ?
 			((X() < Z()) ?
-				((X() < W()) ? mData32[0] : mData32[3]) :
-				(Z() < W() ? mData32[2] : mData32[3])) :
+				((X() < W()) ? mFloat[0] : mFloat[3]) :
+				(Z() < W() ? mFloat[2] : mFloat[3])) :
 			((Y() < Z()) ?
-				((Y() < W()) ? mData32[1] : mData32[3]) :
-				(Z() < W() ? mData32[2] : mData32[3]));
+				((Y() < W()) ? mFloat[1] : mFloat[3]) :
+				(Z() < W() ? mFloat[2] : mFloat[3]));
 
 #endif // USE_SIMD_SSE
 	}
 
 	inline VX_FORCE_INLINE float Vec4::MaxComponent() const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		//__m128 shuf1 = _mm_shuffle_ps(value, value, _MM_SHUFFLE(2, 3, 0, 1)); // y z w x
 		//__m128 max1 = _mm_max_ps(value, shuf1); // max(x,y) max(y,z) max(z,w) max(w,x)
 		//__m128 shuf2 = _mm_shuffle_ps(max1, max1, _MM_SHUFFLE(1, 0, 3, 2)); // z w x y
@@ -267,11 +354,11 @@ namespace vx
 #else
 		return (X() > Y()) ?
 			((X() > Z()) ?
-				((X() > W()) ? mData32[0] : mData32[3]) :
-				(Z() > W() ? mData32[2] : mData32[3])) :
+				((X() > W()) ? mFloat[0] : mFloat[3]) :
+				(Z() > W() ? mFloat[2] : mFloat[3])) :
 			((Y() > Z()) ?
-				((Y() > W()) ? mData32[1] : mData32[3]) :
-				(Z() > W() ? mData32[2] : mData32[3]));
+				((Y() > W()) ? mFloat[1] : mFloat[3]) :
+				(Z() > W() ? mFloat[2] : mFloat[3]));
 #endif // USE_SIMD_SSE
 	}
 
@@ -287,42 +374,47 @@ namespace vx
 
 	inline VX_FORCE_INLINE Vec4 Vec4::Min(const Vec4& lhs, const Vec4& rhs)
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		return _mm_min_ps(lhs.mValue, rhs.mValue);
 #else
-		return Vec4(std::min(lhs.mData32[0], rhs.mData32[0]),
-			std::min(lhs.mData32[1], rhs.mData32[1]),
-			std::min(lhs.mData32[2], rhs.mData32[2]),
-			std::min(lhs.mData32[3], rhs.mData32[3]));
+		return Vec4(std::min(lhs.mFloat[0], rhs.mFloat[0]),
+			std::min(lhs.mFloat[1], rhs.mFloat[1]),
+			std::min(lhs.mFloat[2], rhs.mFloat[2]),
+			std::min(lhs.mFloat[3], rhs.mFloat[3]));
 #endif // USE_SIMD_SSE
 	}
 
 	inline VX_FORCE_INLINE Vec4 Vec4::Max(const Vec4& lhs, const Vec4& rhs)
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		return _mm_max_ps(lhs.mValue, rhs.mValue);
 #else
-		return Vec4(std::max(lhs.mData32[0], rhs.mData32[0]),
-			std::max(lhs.mData32[1], rhs.mData32[1]),
-			std::max(lhs.mData32[2], rhs.mData32[2]),
-			std::max(lhs.mData32[3], rhs.mData32[3]));
+		return Vec4(std::max(lhs.mFloat[0], rhs.mFloat[0]),
+			std::max(lhs.mFloat[1], rhs.mFloat[1]),
+			std::max(lhs.mFloat[2], rhs.mFloat[2]),
+			std::max(lhs.mFloat[3], rhs.mFloat[3]));
 #endif // USE_SIMD_SSE
 
+	}
+
+	inline VX_FORCE_INLINE Vec4 Vec4::Clamp(const Vec4& v, const Vec4& min, const Vec4& max)
+	{
+		return Max(Min(v, max), min);
 	}
 
 
 	VX_FORCE_INLINE bool Vec4::operator == (const Vec4& rhs) const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		__m128i cmp = _mm_castps_si128(_mm_cmpeq_ps(mValue, rhs.mValue));
 		 int mask = _mm_movemask_ps(_mm_castsi128_ps(cmp));
 		return mask == 0b1111;
 #else
 		uint32_t v[4];
-		v[0] = mData32[0] == rhs.mData32[0] ? 0xffffffffu : 0;
-		v[1] = mData32[1] == rhs.mData32[1] ? 0xffffffffu : 0;
-		v[2] = mData32[2] == rhs.mData32[2] ? 0xffffffffu : 0;
-		v[3] = mData32[3] == rhs.mData32[3] ? 0xffffffffu : 0;
+		v[0] = mFloat[0] == rhs.mFloat[0] ? 0xffffffffu : 0;
+		v[1] = mFloat[1] == rhs.mFloat[1] ? 0xffffffffu : 0;
+		v[2] = mFloat[2] == rhs.mFloat[2] ? 0xffffffffu : 0;
+		v[3] = mFloat[3] == rhs.mFloat[3] ? 0xffffffffu : 0;
 
 		int mask = (v[0] >> 31) |
 						 ((v[1] >> 31) << 1) |
@@ -335,7 +427,7 @@ namespace vx
 
 	inline VX_FORCE_INLINE float Vec4::Dot(const Vec4& rhs) const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		/// 0x71 -> 0111 0001 : op first 3 & store 1 (first)
 		/// 0xf1 -> 1111 0001 : op first 4 & store 1 (first)
 		/// 
@@ -358,7 +450,7 @@ namespace vx
 #else
 		float dot = 0.0f;
 		for (int i = 0; i < 4; ++i)
-			dot += (mData32[i] * rhs.mData32[i]);
+			dot += (mFloat[i] * rhs.mFloat[i]);
 		return dot;
 #endif // USE_SIMD_SSE
 
@@ -366,7 +458,7 @@ namespace vx
 
 	inline VX_FORCE_INLINE float Vec4::Dot(const Vec4& lhs, const Vec4& rhs)
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		/// 0x71 -> 0111 0001 : op first 3 & store 1 (first)
 		/// 0xf1 -> 1111 0001 : op first 4 & store 1 (first)
 		/// 
@@ -389,51 +481,40 @@ namespace vx
 #else
 		float dot = 0.0f;
 		for (int i = 0; i < 4; ++i)
-			dot += (lhs.mData32[i] * rhs.mData32[i]);
+			dot += (lhs.mFloat[i] * rhs.mFloat[i]);
 		return dot;
 #endif // USE_SIMD_SSE
 	}
 
 	inline VX_FORCE_INLINE float Vec4::LengthSq() const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		return _mm_cvtss_f32(_mm_dp_ps(mValue, mValue, 0xf1));
 #else
 		float len_sq = 0.0f;
 		for (int i = 0; i < 4; ++i)
-			len_sq += (mData32[i] * mData32[i]);
+			len_sq += (mFloat[i] * mFloat[i]);
 		return len_sq;
 #endif // USE_SIMD_SSE
 	}
 
 	inline VX_FORCE_INLINE float Vec4::Length() const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		return _mm_cvtss_f32(_mm_sqrt_ss(_mm_dp_ps(mValue, mValue, 0xf1)));
 #else
 		float len_sq = 0.0f;
 		for (int i = 0; i < 4; ++i)
-			len_sq += (mData32[i] * mData32[i]);
+			len_sq += (mFloat[i] * mFloat[i]);
 		return std::sqrt(len_sq);
 #endif // USE_SIMD_SSE
 	}
 
-	inline VX_FORCE_INLINE Vec4 Vec4::Normalised_NOT_SIMD() const
-	{
-		float length_sq = (X() * X() + Y() * Y() + Z() * Z() + W() * W());
-		Vec4 result = *this;
-		if (length_sq > 1e-6f)
-		{
-			const float inv = 1.0f / std::sqrt(length_sq);
-			for (int i = 0; i < 4; ++i)
-				result.mData32[i] *= inv;
-		}
-		return result;
-	}
+
 
 	inline VX_FORCE_INLINE Vec4 Vec4::Normalised() const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		/// 0x71 -> 0111 0001 : op first 3 & store 1 (first)
 		/// 0xf1 -> 1111 0001 : op first 4 & store 1 (first)
 		/// 
@@ -453,12 +534,12 @@ namespace vx
 		Vec4 result = *this;
 		float length_sq = 0.0f;
 		for (int i = 0; i < 4; ++i)
-			length_sq += (mData32[i] * mData32[i]);
+			length_sq += (mFloat[i] * mFloat[i]);
 		if (length_sq > 1e-6f)
 		{
 			const float inv = 1.0f / std::sqrt(length_sq);
 			for (int i = 0; i < 4; ++i)
-				result.mData32[i] *= inv;
+				result.mFloat[i] *= inv;
 		}
 		return result;
 #endif // USE_SIMD_SSE
@@ -466,7 +547,7 @@ namespace vx
 
 	inline VX_FORCE_INLINE Vec4& Vec4::Normalise()
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		/// 0x71 -> 0111 0001 : op first 3 & store 1 (first)
 		/// 0xf1 -> 1111 0001 : op first 4 & store 1 (first)
 		/// 
@@ -489,12 +570,12 @@ namespace vx
 #else
 		float length_sq = 0.0f;
 		for (int i = 0; i < 4; ++i)
-			length_sq += (mData32[i] * mData32[i]);
+			length_sq += (mFloat[i] * mFloat[i]);
 		if (length_sq > 1e-6f)
 		{
 			const float inv = 1.0f / std::sqrt(length_sq);
 			for (int i = 0; i < 4; ++i)
-				mData32[i] *= inv;
+				mFloat[i] *= inv;
 		}
 #endif // USE_SIMD_SSE
 
@@ -504,21 +585,21 @@ namespace vx
 
 	inline VX_FORCE_INLINE Vec4 Vec4::Inverted() const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		//return _mm_mul_ps(mValue, _mm_set_ps1(-1.0f)); <-- extra cycle
 		return _mm_xor_ps(mValue, _mm_set_ps1(-0.0f)); //<-- 1 cycle (bitwise)
 #else
-		return Vec4(-mData32[0], -mData32[1], -mData32[2], -mData32[3]);
+		return Vec4(-mFloat[0], -mFloat[1], -mFloat[2], -mFloat[3]);
 #endif // USE_SIMD_SSE
 	}
 
 	inline VX_FORCE_INLINE Vec4& Vec4::Invert()
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		mValue = _mm_xor_ps(mValue, _mm_set_ps1(-0.0f));
 #else
 		for (int i = 0; i < 4; ++i)
-			mData32[i] = -mData32[i];
+			mFloat[i] = -mFloat[i];
 #endif // USE_SIMD_SSE
 
 		return *this;
@@ -529,18 +610,86 @@ namespace vx
 		return One() / mValue;
 	}
 
-	inline VX_FORCE_INLINE Vec3 Vec4::Cross3_NOT_SIMD(const Vec4& lhs, const Vec4& rhs)
+	inline VX_FORCE_INLINE Vec3 Vec4::XYZ() const
 	{
-		Vec3 temp = Vec3(0.0f);
-		temp.mData32[0] = (lhs.Y() * rhs.Z()) - (rhs.Y() * lhs.Z());
-		temp.mData32[1] = (rhs.X() * lhs.Z()) - (lhs.X() * rhs.Z());
-		temp.mData32[2] = (lhs.X() * rhs.Y()) - (rhs.X() * lhs.Y());
-		return temp;
+#ifdef VX_USE_SSE
+		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(2, 2, 1, 0));
+#else
+		return Vec3(mFloat[0], mFloat[1], mFloat[2]);
+#endif // USE_SIMD_SSE
+	}
+
+	inline VX_FORCE_INLINE Vec4 Vec4::XYZZ() const
+	{
+#ifdef VX_USE_SSE
+		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(2, 2, 1, 0));
+#else
+		return Vec3(mFloat[0], mFloat[1], mFloat[2], mFloat[2]);
+#endif // USE_SIMD_SSE
+	}
+
+	inline VX_FORCE_INLINE Vec4 Vec4::XYZ0() const
+	{
+		Vec4 result = *this;
+		result[3] = 0.0f;
+		return result;
+	}
+
+	inline VX_FORCE_INLINE Vec4 Vec4::XYZ1() const
+	{
+		Vec4 result = *this;
+		result[3] = 1.0f;
+		return result;
+	}
+
+	inline VX_FORCE_INLINE Vec4 Vec4::Broadcast(float scalar)
+	{
+#ifdef VX_USE_SSE
+		return _mm_set_ps1(scalar);
+#else
+		return Vec4(scalar, scalar, scalar, scalar);
+#endif // USE_SIMD_SSE
+	}
+
+	inline VX_FORCE_INLINE Vec4 Vec4::SplatX() const
+	{
+#ifdef VX_USE_SSE
+		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(0, 0, 0, 0));
+#else
+		return Vec3(mFloat[0], mFloat[0], mFloat[0], mFloat[0]);
+#endif // USE_SIMD_SSE
+	}
+
+	inline VX_FORCE_INLINE Vec4 Vec4::SplatY() const
+	{
+#ifdef VX_USE_SSE
+		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(1, 1, 1, 1));
+#else
+		return Vec3(mFloat[1], mFloat[1], mFloat[1], mFloat[1]);
+#endif // USE_SIMD_SSE
+	}
+
+	inline VX_FORCE_INLINE Vec4 Vec4::SplatZ() const
+	{
+#ifdef VX_USE_SSE
+		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(2, 2, 2, 2));
+#else
+		return Vec3(mFloat[2], mFloat[2], mFloat[2], mFloat[2]);
+#endif // USE_SIMD_SSE
+	}
+
+	inline VX_FORCE_INLINE Vec4 Vec4::SplatW() const
+	{
+#ifdef VX_USE_SSE
+		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(3, 3, 3, 3));
+#else
+		return Vec3(mFloat[3], mFloat[3], mFloat[3], mFloat[3]);
+#endif // USE_SIMD_SSE
 	}
 
 	inline VX_FORCE_INLINE Vec3 Vec4::Cross3(const Vec4& lhs, const Vec4& rhs)
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		/// y * z - z * y
 		/// z * x - x * z
 		/// x * y - y * x
@@ -576,58 +725,10 @@ namespace vx
 		/// 
 #else
 		Vec3 temp = Vec3(0.0f);
-		temp.mData32[0] = (lhs.Y() * rhs.Z()) - (rhs.Y() * lhs.Z());
-		temp.mData32[1] = (rhs.X() * lhs.Z()) - (lhs.X() * rhs.Z());
-		temp.mData32[2] = (lhs.X() * rhs.Y()) - (rhs.X() * lhs.Y());
+		temp.mFloat[0] = (lhs.Y() * rhs.Z()) - (rhs.Y() * lhs.Z());
+		temp.mFloat[1] = (rhs.X() * lhs.Z()) - (lhs.X() * rhs.Z());
+		temp.mFloat[2] = (lhs.X() * rhs.Y()) - (rhs.X() * lhs.Y());
 		return temp;
 #endif // USE_SIMD_SSE
 	}
-	//
-	//inline FORCE_INLINE Vec3& Vec4::Cross3(const Vec4& rhs)
-	//{
-	//#if USE_SIMD_SSE
-	//	/// y * z - z * y
-	//	/// z * x - x * z
-	//	/// x * y - y * x
-	//	/// 
-	//	/// 
-	//	/// x, y, z   [3210]lhs / rhs
-	//	/// y, z, x   [3021] shuffle order 
-	//	/// 
-	//	/// vl = lhs * shuffled rhs
-	//	/// vr = rhs * shuffled lhs
-	//	/// 
-	//	/// vl - vr
-	//	/// preserve w all through
-	//	__m128 vl = _mm_shuffle_ps(rhs.mValue, rhs.mValue, _MM_SHUFFLE(3, 0, 2, 1));
-	//	/// shuffled y z x w :- right
-	//	vl = _mm_mul_ps(mValue, vl);
-	//	/// xy yz zx ww  [l first r second] 
-	//	mValue = _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(3, 0, 2, 1));
-	//	/// shuffled y z x w :- left
-	//	mValue = _mm_mul_ps(rhs.mValue, mValue);
-	//	/// xy yz zx ww  [r first l second] (yx zy zx ww) 
-	//	mValue = _mm_sub_ps(vl, mValue);
-	//	/// result anitsymmetric xy yz zx ww 
-	//	/// required (yz) (zx) (xy)
-	//	/// shuf  ->  y->x, z->y, x->z  3 0 2 1
-	//	mValue = _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(3, 0, 2, 1));
-	//
-	//	/// yz - zy, 
-	//	/// xz - zx
-	//	/// xy - yx
-	//	/// 
-	//	/// x, y, z
-	//	/// 
-	//	return *this;
-	//
-	//#else
-	//	Vec3 temp = Vec3(0.0f);
-	//	temp.mData32[0] = (Y() * rhs.Z()) - (rhs.Y() * Z());
-	//	temp.mData32[1] = (rhs.X() * Z()) - (X() * rhs.Z());
-	//	temp.mData32[2] = (X() * rhs.Y()) - (rhs.X() * Y());
-	//	return temp;
-	//#endif // USE_SIMD_SSE
-	//
-	//}
 }
