@@ -1,21 +1,16 @@
 #pragma once
 
 #if defined (_MSC_VER)
-#define VX_FORCE_INLINE __forceinline
+#define VX_INLINE __forceinline
 #else
-#define VX_FORCE_INLINE inline
+#define VX_INLINE inline
 #endif // defined (_MSVC_VER)
 
+#include <iostream>
 #if defined(VX_USE_SSE)
 #include <xmmintrin.h>
 
-#include <iostream>
 
-#define VX_ASSERT(expr, ...) \
-		do { if(!(expr)) { \
-				std::cout << "Assertion Failed (" << #expr << "): \nMessage: " << __VA_ARGS__ << ".\nFile: " << __FILE__ << ".\nLine: " << __LINE__ << ".\n"; \
-				__debugbreak(); \
-		 } } while (0)
 
 
 
@@ -33,6 +28,12 @@ static float Get_m128Lane(const __m128& v, int idx)
 
 #endif // defined(USE_SIMD_SSE)
 
+
+#define VX_ASSERT(expr, ...) \
+		do { if(!(expr)) { \
+				std::cout << "Assertion Failed (" << #expr << "): \nMessage: " << __VA_ARGS__ << ".\nFile: " << __FILE__ << ".\nLine: " << __LINE__ << ".\n"; \
+				__debugbreak(); \
+		 } } while (0)
 
 
 //forward declare

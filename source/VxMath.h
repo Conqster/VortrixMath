@@ -11,24 +11,24 @@ namespace vx
 
 
 	template<typename T>
-	VX_FORCE_INLINE T VxMax(T a, T b)
+	VX_INLINE T VxMax(T a, T b)
 	{
 		return a < b ? b : a;
 	}
 
 	template<typename T>
-	VX_FORCE_INLINE T VxMin(T a, T b)
+	VX_INLINE T VxMin(T a, T b)
 	{
 		return a < b ? a : b;
 	}
 
 
-	VX_FORCE_INLINE float VxAbs(float v)
+	VX_INLINE float VxAbs(float v)
 	{
 		return std::fabs(v);
 	}
 
-	VX_FORCE_INLINE double VxAbs(double v)
+	VX_INLINE double VxAbs(double v)
 	{
 		return std::abs(v);
 	}
@@ -36,40 +36,40 @@ namespace vx
 
 
 	template<typename T>
-	VX_FORCE_INLINE T VxClamp(T v, T _min, T _max)
+	VX_INLINE T VxClamp(T v, T _min, T _max)
 	{
 		return VxMin(VxMax(v, _min), _max);
 	}
 
-	VX_FORCE_INLINE float VxSqr(float v)
+	VX_INLINE float VxSqr(float v)
 	{
 		return v * v;
 	}
 
-	VX_FORCE_INLINE double VxSqr(double v)
+	VX_INLINE double VxSqr(double v)
 	{
 		return v * v;
 	}
 
-	VX_FORCE_INLINE float VxSqrt(float v)
+	VX_INLINE float VxSqrt(float v)
 	{
 		return std::sqrt(v);
 	}
 
 
-	VX_FORCE_INLINE double VxSqrt(double v)
+	VX_INLINE double VxSqrt(double v)
 	{
 		return std::sqrt(v);
 	}
 
-	VX_FORCE_INLINE float VxApprox(float a, float b, float eps = 1e-6f)
+	VX_INLINE float VxApprox(float a, float b, float eps = 1e-6f)
 	{
 		float diff = VxAbs(a - b);
 		float scale = VxMax(VxMax(VxAbs(a), VxAbs(b)), 1.0f);
 		return diff <= eps * scale;
 	}
 
-	VX_FORCE_INLINE double VxApprox(double a, double b, double eps = 1e-6f)
+	VX_INLINE double VxApprox(double a, double b, double eps = 1e-6f)
 	{
 		float diff = VxAbs(a - b);
 		float scale = VxMax(VxMax(VxAbs(a), VxAbs(b)), 1.0);

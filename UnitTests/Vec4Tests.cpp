@@ -205,5 +205,22 @@ TEST_SUITE("Vec4 Tests")
 		float w = 4.0f;
 
 		CHECK_APPROX_EQ(vx::Vec4(x, y, z, w).Reciprocal(), vx::Vec4(1.0f / x, 1.0f / y, 1.0f / z, 1.0f/w));
+
+		CHECK_APPROX_EQ(-vx::Vec4(x, y, z, w), vx::Vec4(-x, -y, -z, -w));
+
+		CHECK_APPROX_EQ(vx::Vec4::Broadcast(2.0f), vx::Vec4(2.0f));
+
+
+		vx::Vec4 xyzw = vx::Vec4(x, y, z, w);
+		CHECK_APPROX_EQ(xyzw.SplatX(), vx::Vec4(x));
+		CHECK_APPROX_EQ(xyzw.SplatY(), vx::Vec4(y));
+		CHECK_APPROX_EQ(xyzw.SplatZ(), vx::Vec4(z));
+		CHECK_APPROX_EQ(xyzw.SplatW(), vx::Vec4(w));
+
+
+		CHECK_APPROX_EQ(xyzw.XYZ(), vx::Vec3(x, y, z));
+		CHECK_APPROX_EQ(xyzw.XYZZ(), vx::Vec4(x, y, z, z));
+		CHECK_APPROX_EQ(xyzw.XYZ0(), vx::Vec4(x, y, z, 0.0f));
+		CHECK_APPROX_EQ(xyzw.XYZ1(), vx::Vec4(x, y, z, 1.0f));
 	}
 }

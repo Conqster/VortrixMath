@@ -31,6 +31,12 @@ TEST_SUITE("Vec3 Tests")
 		CHECK_APPROX_EQ(one, vx::Vec3(1.0f));
 
 		CHECK(!one.IsZero());
+
+
+		CHECK_APPROX_EQ(vx::Vec3::Up(), vx::Vec3(0.0f, 1.0f, 0.0f));
+		CHECK_APPROX_EQ(-vx::Vec3::Up(), vx::Vec3(0.0f, -1.0f, 0.0f)); //mimic down
+		CHECK_APPROX_EQ(vx::Vec3::Right(), vx::Vec3(1.0f, 0.0f, 0.0f));
+		CHECK_APPROX_EQ(vx::Vec3::Forward(), vx::Vec3(0.0f, 0.0f, 1.0f));
 	}
 
 
@@ -147,8 +153,16 @@ TEST_SUITE("Vec3 Tests")
 
 
 		bool error = vx::Vec3(3.0f) == vx::Vec3(3.0);
+		CHECK_APPROX_EQ(vx::Vec3(lx, ly, lz).Cross(vx::Vec3(rx, ry, rz)), cross);
 		CHECK_APPROX_EQ(vx::Vec3::Cross(vx::Vec3(lx, ly, lz), vx::Vec3(rx, ry, rz)), cross);
 
+
+		CHECK_APPROX_EQ(vx::Vec3(1, 0, 0).Cross(vx::Vec3(0, 1, 0)), vx::Vec3(0, 0, 1));
+		CHECK_APPROX_EQ(vx::Vec3(0, 1, 0).Cross(vx::Vec3(1, 0, 0)), vx::Vec3(0, 0, -1));
+		CHECK_APPROX_EQ(vx::Vec3(0, 1, 0).Cross(vx::Vec3(0, 0, 1)), vx::Vec3(1, 0, 0));
+		CHECK_APPROX_EQ(vx::Vec3(0, 0, 1).Cross(vx::Vec3(0, 1, 0)), vx::Vec3(-1, 0, 0));
+		CHECK_APPROX_EQ(vx::Vec3(0, 0, 1).Cross(vx::Vec3(1, 0, 0)), vx::Vec3(0, 1, 0));
+		CHECK_APPROX_EQ(vx::Vec3(1, 0, 0).Cross(vx::Vec3(0, 0, 1)), vx::Vec3(0, -1, 0));
 
 		CHECK_APPROX_EQ(vx::Vec3::Cross(vx::Vec3(1, 0, 0), vx::Vec3(0, 1, 0)), vx::Vec3(0, 0, 1));
 		CHECK_APPROX_EQ(vx::Vec3::Cross(vx::Vec3(0, 1, 0), vx::Vec3(1, 0, 0)), vx::Vec3(0, 0, -1));
@@ -202,5 +216,14 @@ TEST_SUITE("Vec3 Tests")
 		float z = 3.0f;
 
 		CHECK_APPROX_EQ(vx::Vec3(x, y, z).Reciprocal(), vx::Vec3(1.0f / x, 1.0f / y, 1.0f / z));
+
+
+		CHECK_APPROX_EQ(-vx::Vec3(x, y, z), vx::Vec3(-x, -y, -z));
+
+		CHECK_APPROX_EQ(vx::Vec3::Broadcast(2.0f), vx::Vec3(2.0f));
+
+		CHECK_APPROX_EQ(vx::Vec3(x, y, z).SplatX(), vx::Vec3(x));
+		CHECK_APPROX_EQ(vx::Vec3(x, y, z).SplatY(), vx::Vec3(y));
+		CHECK_APPROX_EQ(vx::Vec3(x, y, z).SplatZ(), vx::Vec3(z));
 	}
 }
