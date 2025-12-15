@@ -11,6 +11,14 @@ namespace vx
 
 
 	template<typename T>
+	inline constexpr T DegToRad(T deg) { return deg * static_cast<T>(kVxPi) / static_cast<T>(180.0f);
+	}
+	template<typename T>
+	inline constexpr T RadToDeg(T rad) { return rad * static_cast<T>(180.0f) / static_cast<T>(kVxPi); }
+
+
+
+	template<typename T>
 	VX_INLINE T VxMax(T a, T b)
 	{
 		return a < b ? b : a;
@@ -75,4 +83,36 @@ namespace vx
 		float scale = VxMax(VxMax(VxAbs(a), VxAbs(b)), 1.0);
 		return diff <= eps * scale;
 	}
+
+
+	/// Polynomial approximation
+	/// prone to small error (float) 23-bit mantissa
+	/// sin(pi), mathematically = 0, numerically very small, not zero
+	VX_INLINE float VxSin(float v)
+	{
+		return std::sin(v);
+	}
+	/// Polynomial approximation
+	/// prone to small error (float) 23-bit mantissa
+	/// cos(pi), mathematically = 0, numerically very small, not zero
+ 	VX_INLINE double VxSin(double v)
+	{
+		return std::sin(v);
+	}
+	/// Polynomial approximation
+	/// prone to small error (float) 23-bit mantissa
+	/// cos(pi/2), mathematically = 0, numerically very small, not zero
+	VX_INLINE float VxCos(float v)
+	{
+		return std::cos(v);
+	}
+	/// Polynomial approximation
+	/// prone to small error (float) 23-bit mantissa
+	/// cos(pi/2), mathematically = 0, numerically very small, not zero
+	VX_INLINE double VxCos(double v)
+	{
+		return std::cos(v);
+	}
+
+
 }

@@ -3,15 +3,7 @@
 
 namespace vx
 {
-	inline Vec4::Vec4()
-	{
-#ifdef VX_USE_SSE
-		mValue = _mm_setzero_ps();
-#else
-		for (int i = 0; i < 4; i++)
-			mFloats[i] = 0;
-#endif // USE_SIMD_SSE
-	}
+
 	inline Vec4::Vec4(float x, float y, float z, float w)
 	{
 #ifdef VX_USE_SSE
@@ -44,6 +36,27 @@ namespace vx
 		for (int i = 0; i < 4; i++)
 			mFloats[i] = scalar;
 #endif // USE_SIMD_SSE
+	}
+
+	inline Vec4::Vec4(const Vec3& vec3) : 
+		mValue(vec3.Value())
+	{}
+
+	inline Vec4::Vec4(const Vec3 & vec3, float w)
+	{
+#ifdef VX_USE_SSE
+		/// using blend 
+		/// vec a & b 
+		/// mask 0 write a to corresponding lane 
+		/// mask 1 write b
+		/// 
+		/// using binary 1000 [8] for a.x, a.y, a.z, b.w
+		mValue = _mm_blend_ps(vec3.Value(), _mm_set1_ps(w), 8);
+#else
+		for (int i = 0; i < 3; i++)
+			mFloats[i] = vec3[i];
+		mFloats[3] = w;
+#endif // VX_USE_SSE
 	}
 
 	VX_INLINE __m128 Vec4::Value() const

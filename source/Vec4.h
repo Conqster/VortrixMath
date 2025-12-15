@@ -27,11 +27,13 @@ namespace vx
 	{
 	public:
 
-		Vec4();
+		Vec4() = default;
 		Vec4(float x, float y, float z, float w);
 		/// w = z
 		Vec4(float x, float y, float z);
 		explicit Vec4(float scalar);
+		explicit Vec4(const Vec3& vec3);
+		Vec4(const Vec3& vec3, float w);
 		Vec4(__m128 vec) : mValue(vec) {}
 
 		VX_INLINE float X() const { return mFloats[0]; }

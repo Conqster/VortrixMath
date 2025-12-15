@@ -1,5 +1,6 @@
 #pragma once
 
+//#define DOCTEST_CONFIG_NO_POSTIX_SIGNALS
 #include "doctest.h"
 #include "Vec4.h"
 #include "Vec3.h"
