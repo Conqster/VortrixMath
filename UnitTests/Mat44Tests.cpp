@@ -191,13 +191,161 @@ TEST_SUITE("Mat44 Test")
 
 	TEST_CASE("Matrix multiple operations")
 	{
-		vx::Mat44 m (vx::Vec4(0.0f, 1.0f, 2.0f, 3.0f), vx::Vec4(4.0f, 5.0f, 6.0f, 7.0f),
+		vx::Mat44 R (vx::Vec4(0.0f, 1.0f, 2.0f, 3.0f), vx::Vec4(4.0f, 5.0f, 6.0f, 7.0f),
 			vx::Vec4(8.0f, 9.0f, 10.0f, 11.0), vx::Vec4(12.0f, 13.0f, 14.0f, 15.0f));
 
 		vx::Vec3 v(1.0f, 2.0f, 3.0f);
 
-		CHECK(m.Multiply3x3(v) == vx::Vec3(32.0f, 38.0f, 44.0f));
+		CHECK(R.Multiply3x3(v) == vx::Vec3(32.0f, 38.0f, 44.0f));
+		CHECK(R.Multiply3x3Transposed(v) == vx::Vec3(8.0f, 32.0f, 56.0f));
 	}
+
+	TEST_CASE("Matrix full & 3x3 Mutilpy")
+	{
+
+		vx::Mat44 A(
+			vx::Vec4(1, 2, 3, 4),
+			vx::Vec4(5, 6, 7, 8),
+			vx::Vec4(9, 10, 11, 12),
+			vx::Vec4(13, 14, 15, 16));
+
+		vx::Mat44 B(
+			vx::Vec4(17, 18, 19, 20),
+			vx::Vec4(21, 22, 23, 24),
+			vx::Vec4(25, 26, 27, 28),
+			vx::Vec4(29, 30, 31, 32));
+
+
+		vx::Mat44 C = A.Multiply(B);
+
+		std::cout << A;
+
+		CHECK(C.GetColumn(0) == vx::Vec4(538, 612, 686, 760));
+		CHECK(C.GetColumn(1) == vx::Vec4(650, 740, 830, 920));
+		CHECK(C.GetColumn(2) == vx::Vec4(762, 868, 974, 1080));
+		CHECK(C.GetColumn(3) == vx::Vec4(874, 996, 1118, 1240));
+
+
+
+		CHECK(A.Multiply3x3(B) == vx::Mat44(
+											vx::Vec4(278, 332, 386, 0),
+											vx::Vec4(338, 404, 470, 0),
+											vx::Vec4(398, 476, 554, 0),
+											vx::Vec4(0, 0, 0, 1)));
+
+		CHECK(A.Multiply3x3LeftTransposed(B) == vx::Mat44(
+											vx::Vec4(110, 326, 542, 0),
+											vx::Vec4(134, 398, 662, 0),
+											vx::Vec4(158, 470, 782, 0),
+											vx::Vec4(0, 0, 0, 1)));
+
+		CHECK(A.Multiply3x3(B) != A.Multiply3x3LeftTransposed(B));
+
+
+		CHECK(A.Multiply3x3RightTransposed(B) == vx::Mat44(
+												vx::Vec4(347, 410, 473, 0),
+												vx::Vec4(362, 428, 494, 0),
+												vx::Vec4(377, 446, 515, 0),
+												vx::Vec4(0, 0, 0, 1)));
+	}
+
+	TEST_CASE("Matrix Mutilply Affine")
+	{
+
+
+		vx::Mat44 A(
+			vx::Vec4(1, 2, 3, 0),
+			vx::Vec4(4, 5, 6, 0),
+			vx::Vec4(7, 8, 9, 0),
+			vx::Vec4(10, 20, 30, 1));
+
+		vx::Mat44 B(
+			vx::Vec4(2, 0, 0, 0),
+			vx::Vec4(0, 3, 0, 0),
+			vx::Vec4(0, 0, 4, 0),
+			vx::Vec4(1, 2, 3, 1));
+
+
+		vx::Mat44 C = A.MultiplyAffine(B);
+
+		/// 3x3 block
+		CHECK(C.GetAxisX() == vx::Vec3(2, 4, 6));
+		CHECK(C.GetAxisY() == vx::Vec3(12, 15, 18));
+		CHECK(C.GetAxisZ() == vx::Vec3(28, 32, 36));
+
+		CHECK(C.GetTranslation() == vx::Vec3(40, 56, 72));
+
+		///affine invariant
+		CHECK(C(3, 0) == 0.0f);
+		CHECK(C(3, 1) == 0.0f);
+		CHECK(C(3, 2) == 0.0f);
+		CHECK(C(3, 3) == 1.0f);
+
+		// |4 3 5|
+		// |3 2 2|
+		// |1 0 1|
+	}
+
+
+	TEST_CASE("Matrix Transposed")
+	{
+
+
+		vx::Mat44 A(
+			vx::Vec4(1, 2, 3, 0),
+			vx::Vec4(4, 5, 6, 0),
+			vx::Vec4(7, 8, 9, 0),
+			vx::Vec4(10, 20, 30, 1));
+
+		std::cout << A << "\n";
+		std::cout << A.Transposed() << "\n";
+
+		CHECK(A.Transposed() == vx::Mat44(
+			vx::Vec4(1, 4, 7, 10),
+			vx::Vec4(2, 5, 8, 20),
+			vx::Vec4(3, 6, 9, 30),
+			vx::Vec4(0, 0, 0, 1)));
+
+		CHECK(A.Transposed3x3() == vx::Mat44(
+					vx::Vec4(1, 4, 7, 0),
+					vx::Vec4(2, 5, 8, 0),
+					vx::Vec4(3, 6, 9, 0),
+					vx::Vec4(10, 20, 30, 1)));
+	}
+
+	TEST_CASE("Matrix Inverse")
+	{
+
+		CHECK(vx::Mat44::Identity().Inverse3x3() == vx::Mat44::Identity());
+
+		vx::Mat44 A(
+			vx::Vec4(1, 2, 3, 0),
+			vx::Vec4(4, 5, 6, 0),
+			vx::Vec4(7, 8, 10, 0),
+			vx::Vec4(10, 20, 30, 1));
+
+
+
+		//A * A^-1 == Identity
+		CHECK(A.Multiply3x3(A.Inverse3x3()) == vx::Mat44::Identity());
+
+		vx::Mat44 S;
+		S.SetAxisX(vx::Vec3(2, 0, 0));
+		S.SetAxisY(vx::Vec3(0, 4, 0));
+		S.SetAxisZ(vx::Vec3(0, 0, 8));
+
+		vx::Mat44 inv = S.Inverse3x3();
+		CHECK(inv.GetAxisX() == vx::Vec3(0.5f, 0, 0));
+		CHECK(inv.GetAxisY() == vx::Vec3(0, 0.25f, 0));
+		CHECK(inv.GetAxisZ() == vx::Vec3(0, 0, 0.125f));
+
+
+		std::cout << "A: \n" << A;
+		std::cout << "inverse affine: \n" << A.InverseAffine();
+		std::cout << "inverse 3x3: \n" << A.Inverse3x3();
+		CHECK(A.Multiply3x3(A.InverseAffine()) == vx::Mat44::Identity());
+	}
+
 
 	TEST_CASE("Rotation X/Y/Z")
 	{
@@ -283,7 +431,6 @@ TEST_SUITE("Mat44 Test")
 		CHECK(M.GetDiagonal() == vx::Vec4(0.0f, 1.0f, 2.0f, 3.0f));
 		M.SetDiagonal3(vx::Vec3(0.0f, 1.0f, 2.0f));
 		CHECK(M.GetDiagonal() == vx::Vec4(0.0f, 1.0f, 2.0f, 1.0f));
-		CHECK(M.GetBasisHandness() == 1);
 	}
 
 
@@ -295,7 +442,7 @@ TEST_SUITE("Mat44 Test")
 
 		vx::Mat44 M1(vx::Vec4(0.0f, 1.0f, 2.0f, 3.0f), vx::Vec4(4.0f, 5.0f, 6.0f, 7.0f),
 			vx::Vec4(8.0f, 9.0f, 10.0f, 11.0), vx::Vec4(12.0f, 13.0f, 14.0f, 15.0f));
-		CHECK(M1.GetBasisHandness() == 1);
+		CHECK(M1.GetBasisHandness() == 0);
 	}
 
 }

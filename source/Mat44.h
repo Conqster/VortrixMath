@@ -156,7 +156,19 @@ namespace vx
 		VX_INLINE float Determinant3x3() const;
 		VX_INLINE int GetBasisHandness() const;
 		VX_INLINE bool IsAffine() const;
-		VX_INLINE Vec3 Multiply3x3(const Vec3& rhs);
+		VX_INLINE bool IsAffine3x3() const;
+		VX_INLINE Mat44 Transposed3x3() const;
+		VX_INLINE Mat44 Transposed() const;
+		VX_INLINE Mat44 Inverse3x3() const;
+		VX_INLINE Mat44 InverseAffine() const;
+
+		VX_INLINE Vec3 Multiply3x3(const Vec3& rhs) const;
+		VX_INLINE Vec3 Multiply3x3Transposed(const Vec3& rhs) const;
+		VX_INLINE Mat44 Multiply3x3(const Mat44& rhs) const;
+		VX_INLINE Mat44 Multiply3x3LeftTransposed(const Mat44& rhs) const;
+		VX_INLINE Mat44 Multiply3x3RightTransposed(const Mat44& rhs) const;
+		VX_INLINE Mat44 Multiply(const Mat44& rhs) const;
+		VX_INLINE Mat44 MultiplyAffine(const Mat44& rhs) const;
 
 		/// post scale matrix == pre scale 
 		/// for affine transform, pre/post are equivalenrt
@@ -170,6 +182,9 @@ namespace vx
 		/// return result Sx * s.x, Sy * s.y, Sz * s.z
 		VX_INLINE Mat44 PreScaled(const Vec3& scale);
 		VX_INLINE Mat44 PostScaled(const Vec3& scale);
+
+		//util
+			//Inverse
 
 
 		friend std::ostream& operator<<(std::ostream& os, const Mat44& m);

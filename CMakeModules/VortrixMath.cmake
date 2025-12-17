@@ -3,7 +3,8 @@ set(VX_MATH_SRC_DIR ${VX_DIR}/source)
 
 file(GLOB_RECURSE MATH_HEADERS 
 								${VX_MATH_SRC_DIR}/*.h
-								${VX_MATH_SRC_DIR}/*.inl)
+								${VX_MATH_SRC_DIR}/*.inl
+								${VX_MATH_SRC_DIR}/*.cpp)
 
 
 add_library(VortrixMath INTERFACE)
