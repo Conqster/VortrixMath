@@ -187,6 +187,11 @@ namespace vx
 #endif // VX_USE_SSE
 	}
 
+	VX_INLINE Vec3 vx::operator*(const float lhs, const Vec3& rhs)
+	{
+		return rhs * lhs;
+	}
+
 	inline VX_INLINE Vec3& Vec3::operator*=(const float scalar)
 	{
 #ifdef VX_USE_SSE
@@ -617,6 +622,28 @@ namespace vx
 #else
 		for (int i = 0; i < 3; ++i)
 			mFloats[i] = -mFloats[i];
+#endif // VX_USE_SSE
+
+		return *this;
+	}
+
+	inline VX_INLINE Vec3 Vec3::Sqrt() const
+	{
+#ifdef VX_USE_SSE
+		return Vec3(_mm_sqrt_ps(mValue));
+#else
+		return Vec3(VxSqrt(mFloats[0]), VxSqrt(mFloats[1]), VxSqrt(mFloats[2]));
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec3& Vec3::SqrtAssign()
+	{
+#ifdef VX_USE_SSE
+		mValue = _mm_sqrt_ps(mValue);
+#else
+		mFloats[0] = VxSqrt(mFloats[0]);
+		mFloats[1] = VxSqrt(mFloats[1]);
+		mFloats[2] = VxSqrt(mFloats[2]);
 #endif // VX_USE_SSE
 
 		return *this;

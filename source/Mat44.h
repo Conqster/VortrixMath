@@ -164,11 +164,41 @@ namespace vx
 
 		VX_INLINE Vec3 Multiply3x3(const Vec3& rhs) const;
 		VX_INLINE Vec3 Multiply3x3Transposed(const Vec3& rhs) const;
+		VX_INLINE Vec3 MultiplyAffine(const Vec3& rhs) const;
 		VX_INLINE Mat44 Multiply3x3(const Mat44& rhs) const;
 		VX_INLINE Mat44 Multiply3x3LeftTransposed(const Mat44& rhs) const;
 		VX_INLINE Mat44 Multiply3x3RightTransposed(const Mat44& rhs) const;
 		VX_INLINE Mat44 Multiply(const Mat44& rhs) const;
 		VX_INLINE Mat44 MultiplyAffine(const Mat44& rhs) const;
+
+		VX_INLINE Mat44 Add(const Mat44& rhs) const;
+		VX_INLINE Mat44 AddAffine(const Mat44& rhs) const;
+		/// Cross Mat44(Mat33) x Vec3
+		static VX_INLINE Mat44 SkewSymmetric3x3(const Vec3& rhs);
+		VX_INLINE Mat44 operator+(const Mat44& rhs)const = delete;
+		VX_INLINE Mat44& operator+=(const Mat44& rhs) = delete;
+
+
+		/// Transform a position vector by this matrix.
+		/// Applies rotation and translation
+		VX_INLINE Vec3 Transform(const Vec3& vec)const;
+		VX_INLINE static Vec3 Transform(const Mat44& matrix, const Vec3& translate);
+		
+		/// Tranforms a position vector by inverse of this matrix.
+		/// Assume pure rotation and translation
+		VX_INLINE Vec3 TransformInverse(const Vec3& vector) const;
+		VX_INLINE static Vec3 TransformInverse(const Mat44& matrix, const Vec3& translate);
+		
+		/// Transform a direction vector by this matrix (rotated direction)
+		/// ignore translation
+		VX_INLINE Vec3 TransformDirection(const Vec3& vec) const;
+		/// Transform a direction vector by the inverse of this matrix (inversely rotated direction).
+		/// Assue pure rotation (no scale/shear).
+		VX_INLINE Vec3 TransformInverseDirection(const Vec3& vec) const;
+
+
+
+		VX_INLINE Mat44 GetRotation() const;
 
 		/// post scale matrix == pre scale 
 		/// for affine transform, pre/post are equivalenrt
@@ -184,8 +214,11 @@ namespace vx
 		VX_INLINE Mat44 PostScaled(const Vec3& scale);
 
 		//util
-			//Inverse
-
+		/// Decomposing matrix into Mat44 (containing rotation & tranlsation) 
+		/// out scale (vec3)
+		/// see https://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
+		VX_INLINE Mat44 Decompose(Vec3& o_scale) const;
+		VX_INLINE void MakeOrthonormal();
 
 		friend std::ostream& operator<<(std::ostream& os, const Mat44& m);
 	private:

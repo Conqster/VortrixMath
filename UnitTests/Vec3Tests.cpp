@@ -56,6 +56,10 @@ TEST_SUITE("Vec3 Tests")
 		a *= 2.0f;
 		CHECK_APPROX_EQ(a, vx::Vec3(2.0f, 4.0f, 6.0));
 
+		//rhs
+		a = 0.5f * a;
+		CHECK_APPROX_EQ(a, vx::Vec3(1.0f, 2.0f, 3.0));
+
 		a = { 2, 4, 6 };
 		a = a / 2;
 		CHECK_APPROX_EQ(a, vx::Vec3(1.0f, 2.0f, 3.0f));
@@ -225,5 +229,10 @@ TEST_SUITE("Vec3 Tests")
 		CHECK_APPROX_EQ(vx::Vec3(x, y, z).SplatX(), vx::Vec3(x));
 		CHECK_APPROX_EQ(vx::Vec3(x, y, z).SplatY(), vx::Vec3(y));
 		CHECK_APPROX_EQ(vx::Vec3(x, y, z).SplatZ(), vx::Vec3(z));
+
+
+		CHECK_APPROX_EQ(vx::Vec3(49, 121, 25).Sqrt(), vx::Vec3(7, 11, 5));
+		vx::Vec3 v(49, 121, 25);
+		CHECK_APPROX_EQ(v.SqrtAssign(), vx::Vec3(7, 11, 5));
 	}
 }

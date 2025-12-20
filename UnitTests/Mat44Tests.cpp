@@ -202,7 +202,7 @@ TEST_SUITE("Mat44 Test")
 
 	TEST_CASE("Matrix full & 3x3 Mutilpy")
 	{
-
+	
 		vx::Mat44 A(
 			vx::Vec4(1, 2, 3, 4),
 			vx::Vec4(5, 6, 7, 8),
@@ -445,4 +445,104 @@ TEST_SUITE("Mat44 Test")
 		CHECK(M1.GetBasisHandness() == 0);
 	}
 
+
+
+	TEST_CASE("Utiltity function")
+	{
+		vx::Mat44 A(
+			vx::Vec4(1, 2, 3, 0),
+			vx::Vec4(4, 5, 6, 0),
+			vx::Vec4(7, 8, 9, 0),
+			vx::Vec4(10, 20, 30, 1));
+
+		vx::Mat44 B(
+			vx::Vec4(2, 0, 1, 0),
+			vx::Vec4(0, 2, 1, 0),
+			vx::Vec4(1, 1, 2, 0),
+			vx::Vec4(5, 6, 7, 1));
+
+		vx::Vec3 v(1, 2, 3);
+
+		vx::Mat44 sum = A.Add(B);
+
+		CHECK(sum(0, 0) == A(0, 0) + B(0, 0));
+		CHECK(sum(1, 1) == A(1, 1) + B(1, 1));
+		CHECK(sum(3, 3) == 2.0f);
+
+		vx::Mat44 affine_sum = A.AddAffine(B);
+		CHECK(affine_sum(1, 1) == A(1, 1) + B(1, 1));
+		CHECK(affine_sum(3, 3) == 1.0f);
+
+
+		vx::Mat44 skew = vx::Mat44::SkewSymmetric3x3(v);
+
+		CHECK(skew(0, 1) == -v.Z());
+		CHECK(skew(0, 2) == v.Y());
+		CHECK(skew(1, 0) == v.Z());
+		CHECK(skew(1, 2) == -v.X());
+
+		//diagonal 3x3 = 0, affine 1.0
+		CHECK(skew.GetDiagonal() == vx::Vec4(0.0f, 0.0f, 0.0f, 1.0f));
+
+
+		vx::Mat44 valid_full_rank(
+			vx::Vec4(1, 0, 0, 0),
+			vx::Vec4(0, 2, 0, 0),
+			vx::Vec4(0, 0, 3, 0),
+			vx::Vec4(5, 6, 7, 1));
+	
+		vx::Vec3 scale;
+		vx::Mat44 rot_translation = valid_full_rank.Decompose(scale);
+
+		//ensure the decomposition produces rot matrix with 1
+		CHECK(rot_translation(3, 3) == 1.0f);
+		CHECK_APPROX_EQ(rot_translation.GetTranslation(), vx::Vec3(5, 6, 7));
+
+		CHECK(scale.X() > 0);
+		CHECK(scale.Y() > 0);
+		CHECK(scale.Z() > 0);
+
+
+		vx::Vec3 result = A.MultiplyAffine(v);
+
+		//| 0 4 8 12 |
+		//	| 1 5 9 13 |
+		//	| 2 6 10 14 |
+		//	| 3 7 11 15 |
+		vx::Vec3 expected(
+			A(0, 0) * v.X() + A(0, 1) * v.Y() + A(0, 2) * v.Z() + A(0, 3),
+			A(1, 0) * v.X() + A(1, 1) * v.Y() + A(1, 2) * v.Z() + A(1, 3),
+			A(2, 0) * v.X() + A(2, 1) * v.Y() + A(2, 2) * v.Z() + A(2, 3));
+
+		CHECK(result == expected);
+
+
+		vx::Mat44 C(
+			vx::Vec4(0.0f, -0.5f, 0.1f, 0.0f),
+			vx::Vec4(0.5f, 0.866f, 0.2f, 0.0f),
+			vx::Vec4(0.0f, 0.0f, 1.0f, 0.0f),
+			vx::Vec4(10.0f, 20.0f, 30.0f, 1.0f));
+
+		C.MakeOrthonormal();
+
+		vx::Vec3 t = C.Transform(v);
+		vx::Vec3 t_inv = C.TransformInverse(t);
+
+		vx::Vec3 test = C.Transposed().MultiplyAffine(t);
+		vx::Vec3 test2 = C.Transposed3x3().MultiplyAffine(t);
+		vx::Vec3 test3 = C.Multiply3x3Transposed(t);
+		//Tranform -> TransformInverse should recover original
+		CHECK_APPROX_EQ(t_inv, v);
+
+		CHECK(C.Transform(v) == vx::Mat44::Transform(C,v));
+		CHECK(C.TransformInverse(t) == vx::Mat44::TransformInverse(C,t));
+
+
+		vx::Vec3 dir = C.TransformDirection(v);
+		vx::Vec3 dir_inv = C.TransformInverseDirection(dir);
+
+		//TranformDir -> TransformInverseDir should recover original
+		CHECK_APPROX_EQ(dir_inv, v);
+
+	}
 }

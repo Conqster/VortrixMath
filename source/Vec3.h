@@ -65,6 +65,7 @@ namespace vx
 		VX_INLINE Vec3 operator-(const Vec3& rhs) const;
 		VX_INLINE Vec3& operator -=(const Vec3& rhs);
 		VX_INLINE Vec3 operator*(const float scalar) const;
+		VX_INLINE friend Vec3 operator*(const float lhs, const Vec3& rhs);
 		VX_INLINE Vec3& operator*=(const float scalar);
 		VX_INLINE Vec3 operator/(const float scalar) const;
 		VX_INLINE Vec3& operator/=(const float scalar);
@@ -119,6 +120,11 @@ namespace vx
 
 		VX_INLINE Vec3 Inverted() const;
 		VX_INLINE Vec3& Invert();
+
+		///Component wise Square root
+		VX_INLINE Vec3 Sqrt() const;
+		///Component wise Square root in place 
+		VX_INLINE Vec3& SqrtAssign();
 
 		/// Reciprocal
 		/// @eturns a reciprocated vector of this vector (1/this)

@@ -227,10 +227,10 @@ namespace vx
 
 		_MM_TRANSPOSE4_PS(c0, c1, c2, c3);
 
-		result.SetColumn(0, c0);
-		result.SetColumn(1, c1);
-		result.SetColumn(2, c2);
-		result.SetColumn(3, c3);
+		result.mCol[0] = c0;
+		result.mCol[1] = c1;
+		result.mCol[2] = c2;
+		result.mCol[3] = c3;
 
 		return result;
 #else
@@ -531,6 +531,40 @@ namespace vx
 			mFloats[0] * rhs.X() + mFloats[1] * rhs.Y() + mFloats[2] * rhs.Z(),
 			mFloats[4] * rhs.X() + mFloats[5] * rhs.Y() + mFloats[6] * rhs.Z(),
 			mFloats[8] * rhs.X() + mFloats[9] * rhs.Y() + mFloats[10] * rhs.Z());
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec3 Mat44::MultiplyAffine(const Vec3& rhs) const
+	{
+#ifdef VX_USE_SSE
+		/// 0x + 4y + 8z + ;0z
+		/// 1x + 5y + 9z + ;0z
+		/// 2x + 6y + 10z +;0z
+		/// 
+		/// option 1: grp matrix basis xyz component
+		/// x' = XYZx dot rhs
+		/// y' = XYZy dot rhs
+		/// z' = XYZz dot rhs
+		/// 
+		/// basis
+		/// X: 012 mul rhs splat x
+		/// Y: 456 mul rhs splat y
+		/// Z: 8910 mul rhs splat z
+		/// 
+		/// x'y'z' = X + Y + Z
+		/// 
+		__m128 v = rhs.Value();
+		__m128 r = _mm_mul_ps(mCol[0].Value(), _mm_set1_ps(rhs.X()));
+		r = _mm_add_ps(r, _mm_mul_ps(mCol[1].Value(), _mm_set1_ps(rhs.Y())));
+		r = _mm_add_ps(r, _mm_mul_ps(mCol[2].Value(), _mm_set1_ps(rhs.Z())));
+		//translation
+		r = _mm_add_ps(r, mCol[3].Value());
+		//return Vec3(_mm_shuffle_ps(r, r, _MM_SHUFFLE(2, 2, 1, 0)));
+		return Vec3(r);
+#else
+		return Vec3(mFloats[0] * rhs[0] + mFloats[4] * rhs[1] + mFloats[8] * rhs[2] + mFloats[12],
+					mFloats[1] * rhs[0] + mFloats[5] * rhs[1] + mFloats[9] * rhs[2] + mFloats[13],
+					mFloats[2] * rhs[0] + mFloats[6] * rhs[1] + mFloats[10] * rhs[2] + mFloats[14]);
 #endif // VX_USE_SSE
 	}
 
@@ -845,6 +879,124 @@ namespace vx
 		return result;
 	}
 
+	inline VX_INLINE Mat44 Mat44::Add(const Mat44& rhs) const
+	{
+		Mat44 result;
+#ifdef VX_USE_SSE
+		for (int i = 0; i < 4; ++i)
+			result.mCol[i] = mCol[i] + rhs.mCol[i];
+#else
+		for (int i = 0; i < 16; ++i)
+			result.mFloats[i] = mFloats[i] + rhs.mFloats[i];
+#endif // VX_USE_SSE
+		return result;
+	}
+
+	inline VX_INLINE Mat44 Mat44::AddAffine(const Mat44& rhs) const
+	{
+		VX_ASSERT(IsAffine3x3() && rhs.IsAffine3x3(), "one/more matrix is not affine");
+
+		/// two paths, if SSE Vec4 does vectorised add
+		/// but if not waste extra scalar add ops
+		/// so manual add, to minimise waste
+		Mat44 result;
+#ifdef VX_USE_SSE
+		for (int i = 0; i < 4; ++i)
+			result.mCol[i] = mCol[i] + rhs.mCol[i]; ///<-- using sse under the hood
+		//result.mCol[i] = _mm_add_ps(mCol[i].Value(), rhs.mCol[i].Value());
+#else
+		for (int i = 0; i < 16; ++i)
+			result.mFloats[i] = mFloats[i] + rhs.mFloats[i];
+#endif // VX_USE_SSE
+
+		//ensure bottom [0 0 0 1] is consitent
+		//if both affine 0 0 0 would remain 0
+		result.mFloats[15] = 1.0f;
+		return result;
+	}
+
+	inline VX_INLINE Mat44 Mat44::SkewSymmetric3x3(const Vec3& rhs)
+	{
+		float x = rhs.X();
+		float y = rhs.Y();
+		float z = rhs.Z();
+		return Mat44(
+			Vec4(0.0f, z, -y, 0.0f),
+			Vec4(-z, 0.0f, x, 0.0f),
+			Vec4(y, -x, 0.0f, 0.0f),
+			Vec4(0.0f, 0.0f, 0.0f, 1.0f));
+	}
+
+
+	inline VX_INLINE Mat44 Mat44::Decompose(Vec3& o_scale) const
+	{
+		VX_ASSERT(IsAffine(), "one/more matrix is not affine");
+
+		VX_ASSERT(VxAbs(Determinant3x3()) > kEpsilon, "Matrix is singular (degenerated linear dependant)");
+
+		Vec3 x = GetAxisX();
+		Vec3 y = GetAxisY();
+		Vec3 z = GetAxisZ();
+
+		/// see https://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
+		/// Gram-scmidt orthogonalisation (removing skew) 
+
+		/// orthognalise y and z
+		float x_dot_x = VxMax(x.LengthSq(), kEpsilon);
+		y -= (x.Dot(y) / x_dot_x) * x;
+		z -= (x.Dot(z) / x_dot_x) * x;
+		float y_dot_y = VxMax(y.LengthSq(), kEpsilon);
+		z -= (y.Dot(z) / y_dot_y) * y;
+
+		float z_dot_z = VxMax(z.LengthSq(), kEpsilon);
+		o_scale = Vec3(x_dot_x, y_dot_y, z_dot_z).SqrtAssign();
+		
+		// ensure result basis is right handed matrix, if not flip the z axis.
+		if (x.Cross(y).Dot(z) < 0.0f)
+			o_scale.SetZ(-o_scale.Z());
+
+		return Mat44(Vec4(x / o_scale.X(), 0.0f),
+					Vec4(y / o_scale.Y(), 0.0f),
+					Vec4(z / o_scale.Z(), 0.0f),
+					Vec4(GetTranslation(), 1.0f));
+	}
+
+	inline VX_INLINE Vec3 Mat44::Transform(const Vec3& vec) const
+	{
+		return MultiplyAffine(vec);
+	}
+
+	inline VX_INLINE Vec3 Mat44::Transform(const Mat44& matrix, const Vec3& translate)
+	{
+		return matrix.MultiplyAffine(translate);
+	}
+
+	inline VX_INLINE Vec3 Mat44::TransformInverse(const Vec3& vector) const
+	{
+		return Multiply3x3Transposed(vector - GetTranslation());
+	}
+
+	inline VX_INLINE Vec3 Mat44::TransformInverse(const Mat44& matrix, const Vec3& translate)
+	{
+		return matrix.TransformInverse(translate);
+	}
+
+	inline VX_INLINE Vec3 Mat44::TransformDirection(const Vec3& vec) const
+	{
+		return Multiply3x3(vec);
+	}
+
+	inline VX_INLINE Vec3 Mat44::TransformInverseDirection(const Vec3& vec) const
+	{
+		return Multiply3x3Transposed(vec);
+	}
+
+	inline VX_INLINE Mat44 Mat44::GetRotation() const
+	{
+		VX_ASSERT(IsAffine3x3(), "Ensure its affine");
+		return Mat44(mCol[0], mCol[1], mCol[2]);
+	}
+
 
 
 	inline VX_INLINE Mat44 Mat44::PreScaled(const Vec3& scale)
@@ -856,6 +1008,23 @@ namespace vx
 	{
 		Vec4 s(scale, 1.0f);
 		return Mat44(mCol[0] * s, mCol[1] * s, mCol[2] * s, mCol[3] * s);
+	}
+
+	inline VX_INLINE void Mat44::MakeOrthonormal()
+	{
+		Vec3 X = GetAxisX();
+		Vec3 Y = GetAxisY();
+		Vec3 Z = GetAxisZ();
+
+		X.Normalise();
+
+		Y = (Y - X * X.Dot(Y)).Normalise();
+
+		Z = X.Cross(Y);
+
+		SetAxisX(X);
+		SetAxisY(Y);
+		SetAxisZ(Z);
 	}
 
 	inline VX_INLINE Vec4& Mat44::operator[](int column)
