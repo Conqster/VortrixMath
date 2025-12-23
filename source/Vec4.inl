@@ -68,6 +68,15 @@ namespace vx
 #endif // VX_USE_SSE
 	}
 
+	inline __m128& Vec4::Value()
+	{
+#ifdef VX_USE_SSE
+		return mValue;
+#else
+		return _mm_load_ps(mFloats);
+#endif // VX_USE_SSE
+	}
+
 	inline VX_INLINE float& Vec4::operator[](uint32_t i)
 	{
 		VX_ASSERT(i < 4, "Trying to access invalid Vec4 index");

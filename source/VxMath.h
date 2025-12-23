@@ -115,4 +115,13 @@ namespace vx
 	}
 
 
+	VX_INLINE float VxAcos(float v)
+	{
+		return std::acos(v);
+	}
+
+	VX_INLINE double VxAcos(double v)
+	{
+		return std::acos(v);
+	}
 }

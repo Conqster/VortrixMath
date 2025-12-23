@@ -100,21 +100,21 @@ namespace vx
 		/// |  R   sin  cos Tz |
 		/// |  0    0    0   1 |
 		/// 
-		static VX_INLINE Mat44 RotationX(float in_x_rad);
+		static VX_INLINE Mat44 RotationX(float angle);
 		/// rotation around Z axis YAW in radian
 		/// |  cos  R  sin  Tx |
 		/// |   R  R/S  R   Ty |
 		/// | -sin  R  cos Tz |
 		/// |   0   0   0   1 |
 		/// 
-		static VX_INLINE Mat44 RotationY(float in_y_rad);
+		static VX_INLINE Mat44 RotationY(float angle);
 		/// rotation around Z axis Roll in radian
 		/// | cos -sin   R  Tx |
 		/// | sin  cos   R  Ty |
 		/// |  R    R   R/S Tz |
 		/// |  0    0    0   1 |
 		/// 
-		static VX_INLINE Mat44 RotationZ(float in_z_rad);
+		static VX_INLINE Mat44 RotationZ(float angle);
 		static VX_INLINE Mat44 Basis(const Vec3& x, const Vec3& y, const Vec3& z);
 		static VX_INLINE Mat44 BasisTranslation(const Vec3& x, const Vec3& y, const Vec3& z, const Vec3& t);
 		//static VX_INLINE Mat44 Rotation(const Quat& q);

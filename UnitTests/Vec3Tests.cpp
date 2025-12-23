@@ -234,5 +234,48 @@ TEST_SUITE("Vec3 Tests")
 		CHECK_APPROX_EQ(vx::Vec3(49, 121, 25).Sqrt(), vx::Vec3(7, 11, 5));
 		vx::Vec3 v(49, 121, 25);
 		CHECK_APPROX_EQ(v.SqrtAssign(), vx::Vec3(7, 11, 5));
+
+
+
+		//parellel
+		vx::Vec3 a(1, 2, 3);
+		vx::Vec3 b(2, 4, 6);
+
+		CHECK_APPROX_EQ(a.CosAngle(b), 1.0f);
+		CHECK_APPROX_EQ(a.Angle(b), 0.0f);
+
+
+		//non parallel 
+		a = vx::Vec3(1, 0, 0);
+		b = vx::Vec3(-2, 0, 0);
+
+		CHECK_APPROX_EQ(a.CosAngle(b), -1.0f);
+		CHECK_APPROX_EQ(a.Angle(b), vx::kVxPi);
+
+		//orthogonal 
+		a = vx::Vec3(1, 0, 0);
+		b = vx::Vec3(0, 1, 0);
+
+		CHECK_APPROX_EQ(a.CosAngle(b), 0.0f);
+		CHECK_APPROX_EQ(a.Angle(b), vx::kVxPi * 0.5f);
+
+		//arbitary 
+		a = vx::Vec3(1, 2, 3);
+		b = vx::Vec3(4, -5, 6);
+
+		float cos_ref = a.Dot(b) / (a.Length() * b.Length());
+
+		CHECK_APPROX_EQ(a.CosAngle(b), cos_ref);
+		CHECK_APPROX_EQ(a.Angle(b), vx::VxAcos(cos_ref));
+
+		//norm
+		a = vx::Vec3(1, 2, 3).Normalised();
+		b = vx::Vec3(-3, 1, 2).Normalised();
+
+		cos_ref = a.Dot(b);
+
+		CHECK_APPROX_EQ(a.CosAngle(b), cos_ref);
+		CHECK_APPROX_EQ(a.Angle(b), vx::VxAcos(cos_ref));
+
 	}
 }

@@ -103,6 +103,9 @@ namespace vx
 		/// <returns>The scalar dot product of the two vectors as a float.</returns>
 		VX_INLINE static float Dot(const Vec3& lhs, const Vec3& rhs);
 
+		VX_INLINE float Angle(const Vec3& rhs) const;
+		VX_INLINE float CosAngle(const Vec3& rhs) const;
+
 		/// solve cross on x, y, z, first three lane
 		/// and store on first three lane,
 		/// fourth lane (w) constant
@@ -111,6 +114,10 @@ namespace vx
 		/// and store on first three lane,
 		/// fourth lane (w) constant
 		VX_INLINE static Vec3 Cross(const Vec3& lhs, const Vec3& rhs);
+		/// a * (b x c) Dot(a, Cross(b, c)
+		/// Signed Volume 6
+		VX_INLINE float ScalarTriple(const Vec3& b, const Vec3& c) const;
+
 
 		VX_INLINE float LengthSq() const;
 		VX_INLINE float Length() const;
@@ -125,6 +132,7 @@ namespace vx
 		VX_INLINE Vec3 Sqrt() const;
 		///Component wise Square root in place 
 		VX_INLINE Vec3& SqrtAssign();
+
 
 		/// Reciprocal
 		/// @eturns a reciprocated vector of this vector (1/this)

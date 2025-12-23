@@ -459,6 +459,24 @@ namespace vx
 #endif // VX_USE_SSE
 	}
 
+	inline VX_INLINE float Vec3::Angle(const Vec3& rhs) const
+	{
+		float len_sq = LengthSq() * rhs.LengthSq();
+		VX_ASSERT(len_sq > kEpsilon, "");
+
+		float r = Dot(rhs) / VxSqrt(len_sq);
+		r = VxClamp(r, -1.0f, 1.0f);
+		return VxAcos(r);
+	}
+
+	inline VX_INLINE float Vec3::CosAngle(const Vec3& rhs) const
+	{
+		float len_sq = LengthSq() * rhs.LengthSq();
+		VX_ASSERT(len_sq > kEpsilon, "");
+
+		return Dot(rhs) / VxSqrt(len_sq);
+	}
+
 	inline VX_INLINE Vec3 Vec3::Cross(const Vec3& rhs)
 	{
 #ifdef VX_USE_SSE
@@ -529,6 +547,39 @@ namespace vx
 			(rhs.X() * lhs.Z()) - (lhs.X() * rhs.Z()),
 			(lhs.X() * rhs.Y()) - (rhs.X() * lhs.Y()));
 #endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE float Vec3::ScalarTriple(const Vec3& b, const Vec3& c) const
+	{
+		//return GetAxisX().Dot(GetAxisY().Cross(GetAxisZ()));
+		// 
+		/// scalar equivalent Dot(x, Cross(Y, Z)
+		/// TBN
+		/// Dot(N, Cross(T, B)
+		
+
+		//Cross bc
+		__m128 T = _mm_shuffle_ps(c.mValue, c.mValue, _MM_SHUFFLE(3, 0, 2, 1));
+		/// shuffled y z x w :- right
+		T = _mm_mul_ps(b.mValue, T);
+		/// xy yz zx ww  [l first r second] 
+		__m128 B = _mm_shuffle_ps(b.mValue, b.mValue, _MM_SHUFFLE(3, 0, 2, 1));
+		/// shuffled y z x w :- left
+		B = _mm_mul_ps(c.mValue, B);
+		/// xy yz zx ww  [r first l second] (yx zy zx ww) 
+		T = _mm_sub_ps(T, B);
+		/// result anitsymmetric xy yz zx ww 
+		/// required (yz) (zx) (xy)
+		/// shuf  ->  y->x, z->y, x->z  3 0 2 1
+		T = _mm_shuffle_ps(T, T, _MM_SHUFFLE(3, 0, 2, 1));
+
+		/// dot N T
+		return _mm_cvtss_f32(_mm_dp_ps(mValue, T, 0x71));
+
+
+		return mFloats[0] * (b.mFloats[1] * c.mFloats[2] - b.mFloats[2] * c.mFloats[1]) +
+			mFloats[1] * (b.mFloats[2] * c.mFloats[0] - b.mFloats[0] * c.mFloats[2]) +
+			mFloats[2] * (b.mFloats[0] * c.mFloats[1] - b.mFloats[1] * c.mFloats[0]);
 	}
 
 	inline VX_INLINE float Vec3::LengthSq() const

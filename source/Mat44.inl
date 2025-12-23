@@ -57,15 +57,15 @@ namespace vx
 					 Vec4(0.0f, 0.0f, 0.0f, 1.0f));
 	}
 
-	inline VX_INLINE Mat44 Mat44::RotationX(float in_x_rad)
+	inline VX_INLINE Mat44 Mat44::RotationX(float angle)
 	{
 		/// | R/S   R   R  Tx || R/s R  R Tx |
 		/// |  R   cos -sin Ty ||  R  c  -s Ty |
 		/// |  R   sin  cos Tz ||  R  s   c Tz |
 		/// |  0    0    0   1 ||  0  0   0  1 |
 		/// 
-		float s = VxSin(in_x_rad);
-		float c = VxCos(in_x_rad);
+		float s = VxSin(angle);
+		float c = VxCos(angle);
 
 		//column major
 		return Mat44(Vec4(1.0f, 0.0f, 0.0f, 0.0f),
@@ -74,15 +74,15 @@ namespace vx
 			Vec4(0.0f, 0.0f, 0.0f, 1.0f));
 	}
 
-	inline VX_INLINE Mat44 Mat44::RotationY(float in_y_rad)
+	inline VX_INLINE Mat44 Mat44::RotationY(float angle)
 	{
 		/// |  cos  R  sin  Tx |
 		/// |   R  R/S  R   Ty |
 		/// | -sin  R  cos Tz |
 		/// |   0   0   0   1 |
 		/// 
-		float s = VxSin(in_y_rad);
-		float c = VxCos(in_y_rad);
+		float s = VxSin(angle);
+		float c = VxCos(angle);
 
 		return Mat44(Vec4(c, 0.0f, -s, 0.0f),
 			Vec4(0.0f, 1.0f, 0.0f, 0.0f),
@@ -90,15 +90,15 @@ namespace vx
 			Vec4(0.0f, 0.0f, 0.0f, 1.0f));
 	}
 
-	inline VX_INLINE Mat44 Mat44::RotationZ(float in_z_rad)
+	inline VX_INLINE Mat44 Mat44::RotationZ(float angle)
 	{
 		/// | cos -sin   R  Tx |
 		/// | sin  cos   R  Ty |
 		/// |  R    R   R/S Tz |
 		/// |  0    0    0   1 |
 		/// 
-		float s = VxSin(in_z_rad);
-		float c = VxCos(in_z_rad);
+		float s = VxSin(angle);
+		float c = VxCos(angle);
 
 		return Mat44(Vec4(c, s,0.0f, 0.0f),
 					 Vec4(-s, c, 0.0f, 0.0f),

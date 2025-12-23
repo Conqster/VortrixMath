@@ -47,6 +47,7 @@ namespace vx
 		VX_INLINE void SetW(float v) { mFloats[3] = v; }
 
 		__m128 Value() const;
+		__m128& Value();
 
 		VX_INLINE float& operator[](uint32_t i);
 		VX_INLINE float const& operator[](uint32_t i) const;

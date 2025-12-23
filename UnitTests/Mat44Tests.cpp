@@ -517,29 +517,29 @@ TEST_SUITE("Mat44 Test")
 		CHECK(result == expected);
 
 
-		vx::Mat44 C(
+		vx::Mat44 transform(
 			vx::Vec4(0.0f, -0.5f, 0.1f, 0.0f),
 			vx::Vec4(0.5f, 0.866f, 0.2f, 0.0f),
 			vx::Vec4(0.0f, 0.0f, 1.0f, 0.0f),
 			vx::Vec4(10.0f, 20.0f, 30.0f, 1.0f));
 
-		C.MakeOrthonormal();
+		transform.MakeOrthonormal();
 
-		vx::Vec3 t = C.Transform(v);
-		vx::Vec3 t_inv = C.TransformInverse(t);
+		vx::Vec3 t = transform.Transform(v);
+		vx::Vec3 t_inv = transform.TransformInverse(t);
 
-		vx::Vec3 test = C.Transposed().MultiplyAffine(t);
-		vx::Vec3 test2 = C.Transposed3x3().MultiplyAffine(t);
-		vx::Vec3 test3 = C.Multiply3x3Transposed(t);
+		vx::Vec3 test = transform.Transposed().MultiplyAffine(t);
+		vx::Vec3 test2 = transform.Transposed3x3().MultiplyAffine(t);
+		vx::Vec3 test3 = transform.Multiply3x3Transposed(t);
 		//Tranform -> TransformInverse should recover original
 		CHECK_APPROX_EQ(t_inv, v);
 
-		CHECK(C.Transform(v) == vx::Mat44::Transform(C,v));
-		CHECK(C.TransformInverse(t) == vx::Mat44::TransformInverse(C,t));
+		CHECK(transform.Transform(v) == vx::Mat44::Transform(transform,v));
+		CHECK(transform.TransformInverse(t) == vx::Mat44::TransformInverse(transform,t));
 
 
-		vx::Vec3 dir = C.TransformDirection(v);
-		vx::Vec3 dir_inv = C.TransformInverseDirection(dir);
+		vx::Vec3 dir = transform.TransformDirection(v);
+		vx::Vec3 dir_inv = transform.TransformInverseDirection(dir);
 
 		//TranformDir -> TransformInverseDir should recover original
 		CHECK_APPROX_EQ(dir_inv, v);
