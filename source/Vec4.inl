@@ -672,6 +672,65 @@ namespace vx
 		return *this;
 	}
 
+	inline VX_INLINE Vec4 Vec4::Sqrt() const
+	{
+#ifdef VX_USE_SSE
+		return Vec4(_mm_sqrt_ps(mValue));
+#else
+		return Vec4(VxSqrt(mFloats[0]), VxSqrt(mFloats[1]), VxSqrt(mFloats[2]));
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec4& Vec4::SqrtAssign()
+	{
+#ifdef VX_USE_SSE
+		mValue = _mm_sqrt_ps(mValue);
+#else
+		mFloats[0] = VxSqrt(mFloats[0]);
+		mFloats[1] = VxSqrt(mFloats[1]);
+		mFloats[2] = VxSqrt(mFloats[2]);
+#endif // VX_USE_SSE
+
+		return *this;
+	}
+
+
+	template<int X, int Y, int Z, int W>
+	inline VX_INLINE void vx::Vec4::FlipSignAssign()
+	{
+#ifdef VX_USE_SSE
+		mValue = _mm_xor_ps(mValue, simd::SignMask<X, Y, Z, W>());
+#else
+		mFloats[0] = mFloats[0] * X;
+		mFloats[1] = mFloats[1] * Y;
+		mFloats[2] = mFloats[2] * Z;
+		mFloats[3] = mFloats[3] * W;
+#endif // VX_USE_SSE
+	}
+
+	template<int X, int Y, int Z, int W>
+	inline VX_INLINE Vec4 Vec4::FlipSign() const
+	{
+		Vec4 v(*this);
+		v.FlipSignAssign<X, Y, Z, W>();
+		return v;
+	}
+
+	template<int X, int Y, int Z, int W>
+	inline VX_INLINE [[nodiscard]] Vec4 Vec4::Swizzle() const
+	{
+		VX_ASSERT(X >= 0 && X <= 3, "X out of [0, 3] range");
+		VX_ASSERT(Y >= 0 && Y <= 3, "X out of [0, 3] range");
+		VX_ASSERT(Z >= 0 && Z <= 3, "X out of [0, 3] range");
+		VX_ASSERT(W >= 0 && W <= 3, "X out of [0, 3] range");
+#ifdef VX_USE_SSE
+		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(W, Z, Y, X));
+#else
+		return Vec4(mFloats[X], mFloats[Y], mFloat[Z], mFloat[W]);
+#endif // VX_USE_SSE
+	}
+
+
 	VX_INLINE Vec4 Vec4::Reciprocal() const
 	{
 		return One() / mValue;

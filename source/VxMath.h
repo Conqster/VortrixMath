@@ -4,6 +4,62 @@
 namespace vx
 {
 
+	namespace simd
+	{
+
+		template<int X, int Y, int Z, int W>
+		VX_INLINE constexpr __m128 SignMask()
+		{
+			return _mm_castsi128_ps(_mm_set_epi32(
+							(W < 0) ? 0x80000000 : 0x00000000, 
+							(Z < 0) ? 0x80000000 : 0x00000000, 
+							(Y < 0) ? 0x80000000 : 0x00000000, 
+							(X < 0) ? 0x80000000 : 0x00000000);
+		}
+
+		template<int X, int Y, int Z, int W>
+		VX_INLINE constexpr __m128 LaneMask()
+		{
+			return _mm_castsi128_ps(_mm_set_epi32(
+				(W < 0) * 0x80000000,
+				(Z < 0) * 0x80000000,
+				(Y < 0) * 0x80000000,
+				(X < 0) * 0x80000000);
+		}
+
+		template<int X, int Y, int Z, int W>
+		VX_INLINE constexpr __m128 FlipSign(const __m128 v)
+		{
+			return _mm_xor_ps(v, SignMask<X, Y, Z, W>());
+		}
+
+		VX_INLINE constexpr __m128 Xor(const __m128& v, const __m128& mask)
+		{
+			return _mm_xor_ps(v, mask);
+		}
+
+
+		template<int X, int Y, int Z, int W>
+		VX_INLINE __m128 Swizzle(const __m128& v)
+		{
+			VX_ASSERT(X >=0 && X <= 3, "X out of [0, 3] range");
+			VX_ASSERT(Y >=0 && Y <= 3, "X out of [0, 3] range");
+			VX_ASSERT(Z >=0 && Z <= 3, "X out of [0, 3] range");
+			VX_ASSERT(W >=0 && W <= 3, "X out of [0, 3] range");
+			return _mm_shuffle_ps(v, v, _MM_SHUFFLE(W, Z, Y, X));
+		}
+
+		template<int X, int Y, int Z, int W>
+		VX_INLINE __m128 Swizzle(const __m128& v0, const __m128& v1)
+		{
+			VX_ASSERT(X >= 0 && X <= 3, "X out of [0, 3] range");
+			VX_ASSERT(Y >= 0 && Y <= 3, "X out of [0, 3] range");
+			VX_ASSERT(Z >= 0 && Z <= 3, "X out of [0, 3] range");
+			VX_ASSERT(W >= 0 && W <= 3, "X out of [0, 3] range");
+			return _mm_shuffle_ps(v0, v1, _MM_SHUFFLE(W, Z, Y, X));
+		}
+
+	}
 
 	static constexpr float kVxPi = 3.14159265358979323846f;
 	static constexpr float kVxTau = 6.283185307179586f;

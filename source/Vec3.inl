@@ -477,7 +477,7 @@ namespace vx
 		return Dot(rhs) / VxSqrt(len_sq);
 	}
 
-	inline VX_INLINE Vec3 Vec3::Cross(const Vec3& rhs)
+	inline VX_INLINE Vec3 Vec3::Cross(const Vec3& rhs) const
 	{
 #ifdef VX_USE_SSE
 		/// y * z - z * y
@@ -698,6 +698,45 @@ namespace vx
 #endif // VX_USE_SSE
 
 		return *this;
+	}
+
+
+	template<int X, int Y, int Z>
+	inline VX_INLINE void vx::Vec3::FlipSignAssign()
+	{
+		VX_ASSERT(X() == 1 || X() == -1 ||
+			Y() == 1 || Y() == -1 ||
+			Z() == 1 || Z() == -1, "out of bounds range [-1, 1]");
+
+#ifdef VX_USE_SSE
+		mValue = _mm_xor_ps(mValue, simd::SignMask<X, Y, Z, Z>());
+#else
+		if constexpr (X < 0) mFloats[0] = -mFloats[0];
+		if constexpr (Y <0) mFloats[1] = -mFloats[1];
+		if constexpr (Z <0) mFloats[2] = -mFloats[2];
+		//mFloats[3] = mFloats[2];
+#endif // VX_USE_SSE
+	}
+
+	template<int X, int Y, int Z>
+	inline VX_INLINE Vec3 Vec3::FlipSign() const
+	{
+		Vec3 v(*this);
+		v.FlipSignAssign<X, Y, Z>();
+		return v;
+	}
+
+	template<int X, int Y, int Z>
+	inline VX_INLINE [[nodiscard]] Vec3 Vec3::Swizzle() const
+	{
+		VX_ASSERT(X >= 0 && X <= 3, "X out of [0, 3] range");
+		VX_ASSERT(Y >= 0 && Y <= 3, "X out of [0, 3] range");
+		VX_ASSERT(Z >= 0 && Z <= 3, "X out of [0, 3] range");
+#ifdef VX_USE_SSE
+		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(Z, Z, Y, X));
+#else
+		return Vec3(mFloats[X], mFloats[Y], mFloat[Z]);
+#endif // VX_USE_SSE
 	}
 
 	VX_INLINE Vec3 Vec3::Reciprocal() const

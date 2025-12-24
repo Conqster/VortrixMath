@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Vec4.h"
+#include "Mat44.h"
 
 namespace vx
 {
@@ -46,7 +47,6 @@ namespace vx
 		VX_INLINE void SetAxisAngle(const Vec3& axis, float angle);
 		VX_INLINE void GetAxisAngle(Vec3& axis, float angle);
 
-		//static VX_INLINE Mat44 GetRotationMat44();
 
 		VX_INLINE void Normalise();
 		VX_INLINE Quat Normalised() const;
@@ -56,13 +56,43 @@ namespace vx
 		VX_INLINE float LengthSq() const { return mValue.LengthSq(); }
 		VX_INLINE float Length() const { return mValue.Length(); }
 
-		VX_INLINE Quat Conjugated() const { return Quat(-X(), -Y(), -Z(), W()); }
+		VX_INLINE Quat Conjugated() const { return Quat(mValue.FlipSign<-1, -1, -1, 1>()); }
 		VX_INLINE Quat Inversed() const;
-		/// Rotates a vector by this quaternion
+		/// Rotates a vector by this unit quaternion
+		/// Quat * Vec3 
+		/// v' = q * v * q^-1
+		/// 
+		/// Rodrigues formula :
+		/// v'= v + 2 * w * (q.xyz x v) + 2 * (q.xyz x (q.xyz x v))
+		/// v' = v' = v + wt + (q.xyz x t)
+		///		t = 2(q.xyz x v)
 		/// @param vector representing angular velocity
 		/// @note in physics orientation update
 		VX_INLINE Vec3 Rotate(const Vec3& vec) const;
+		/// Rotate a vector from world space
+		/// into quat local space
+		/// Quat * Vec3 
+		/// v' = q^-1 * v * q
+		/// 
+		/// Rodrigues formula :
+		/// v'= v + 2 * w * (q.xyz x v) + 2 * (q.xyz x (q.xyz x v))
+		/// v' = v' = v + wt + (q.xyz x t)
+		///		t = 2(q.xyz x v)
 		VX_INLINE Vec3 InverseRotate(const Vec3& vec) const;
+
+		VX_INLINE Vec3 RotateSlow(const Vec3& vec) const;
+		VX_INLINE Vec3 InverseRotateSlow(const Vec3& vec) const;
+
+		VX_INLINE Vec3 RotateAxisX() const;
+		VX_INLINE Vec3 RotateAxisY() const;
+		VX_INLINE Vec3 RotateAxisZ() const;
+
+		VX_INLINE Vec3 RotateScaledAxisX(float scale) const;
+		VX_INLINE Vec3 RotateScaledAxisY(float scale) const;
+		VX_INLINE Vec3 RotateScaledAxisZ(float scale) const;
+
+		VX_INLINE void RotateScaledAxes(const Vec3& scale, Vec3& out_x, Vec3& out_y, Vec3& out_z);
+		VX_INLINE Mat44 GetRotationMat44();
 
 		VX_INLINE Quat operator*(const Quat& rhs) const;
 		VX_INLINE Quat operator*=(const Quat& rhs);

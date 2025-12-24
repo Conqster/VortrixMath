@@ -109,7 +109,7 @@ namespace vx
 		/// solve cross on x, y, z, first three lane
 		/// and store on first three lane,
 		/// fourth lane (w) constant
-		VX_INLINE Vec3 Cross(const Vec3& rhs);
+		VX_INLINE Vec3 Cross(const Vec3& rhs) const;
 		/// solve cross on x, y, z, first three lane
 		/// and store on first three lane,
 		/// fourth lane (w) constant
@@ -133,6 +133,12 @@ namespace vx
 		///Component wise Square root in place 
 		VX_INLINE Vec3& SqrtAssign();
 
+		template<int X, int Y, int Z>
+		VX_INLINE void FlipSignAssign();
+		template<int X, int Y, int Z>
+		VX_INLINE [[nodiscard]] Vec3 FlipSign() const;
+		template<int X, int Y, int Z>
+		VX_INLINE [[nodiscard]] Vec3 Swizzle() const;
 
 		/// Reciprocal
 		/// @eturns a reciprocated vector of this vector (1/this)

@@ -124,6 +124,18 @@ namespace vx
 		VX_INLINE Vec4 Inverted() const;
 		VX_INLINE Vec4& Invert();
 
+		///Component wise Square root
+		VX_INLINE Vec4 Sqrt() const;
+		///Component wise Square root in place 
+		VX_INLINE Vec4& SqrtAssign();
+
+		template<int X, int Y, int Z, int W>
+		VX_INLINE void FlipSignAssign();
+		template<int X, int Y, int Z, int W>
+		VX_INLINE Vec4 FlipSign() const;
+		template<int X, int Y, int Z, int W>
+		VX_INLINE [[nodiscard]] Vec4 Swizzle() const;
+
 		/// Reciprocal
 		/// @eturns a reciprocated vector of this vector (1/this)
 		VX_INLINE Vec4 Reciprocal() const;
