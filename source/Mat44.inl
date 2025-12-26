@@ -1,5 +1,6 @@
 #include "Mat44.h"
 
+#include "Quat.h"
 namespace vx
 {
 	Mat44::Mat44(const float diagonal)
@@ -122,6 +123,216 @@ namespace vx
 					Vec4(t, 1.0f));
 	}
 
+	inline VX_INLINE Mat44 Mat44::Rotation(const Quat& q)
+	{
+		////| [1 - 2(yy - zz) xy + wz        xz - wy] | T
+		////| [xy - wz        1-2(xx - zz)]  yz + wx] |
+		////| [xz + wy        yz - wx        1 - xx - yy] |
+
+		/// assume Quat is unit quaternion 
+		/// 
+		////| [1 - (yy - zz)	  xy + wz         xz - wy]	 | T
+		////| [	  xy - wz      1 - (xx - zz)]     yz + wx]   |
+		////| [   xz + wy		  yz - wx      1 - (xx - yy)]|
+		VX_ASSERT(q.IsUnitQuat(), "Quaternion is not unit");
+
+#ifdef VX_USE_SSE
+
+
+		__m128 _q = q.XYZW().Value();
+
+		//[tx, ty, tz, tw]
+		__m128 t_xyz = _mm_add_ps(_q, _q);
+		//[xx, yy, zz, ww]
+		__m128 xx_yy_zz_ww = _mm_mul_ps(t_xyz, _q);
+
+
+		/// diag [yy + zz, xx + zz, xx + yy, 0]
+		__m128 diag = _mm_add_ps(simd::Swizzle<1, 0, 0, 3>(xx_yy_zz_ww), simd::Swizzle<2, 2, 1, 3>(xx_yy_zz_ww));
+		/// [1-(yy + zz), 1-(xx + zz), 1-(xx + yy)]
+		diag = _mm_sub_ps(_mm_set1_ps(1.0f), diag);
+
+		/// 01: xy + wz
+		/// 02: xz - wy
+		/// 
+		/// 10: xy - wz
+		/// 12: yz + wx
+		/// 
+		/// 20: zz + wy
+		/// 21: yz - wx
+		/// 
+		/// group 
+		/// 01: xy + wz
+		/// 10: xy - wz
+		/// 
+		/// 20: xz + wy
+		/// 02: xz - wy
+		/// 
+		/// 12: yz + wx
+		/// 21: yz - wx
+		/// 
+		/// 
+		/// a: xy xz yz
+		/// b: wz wy wx
+		/// 
+		/// 01_20_12: a + b
+		/// 10_02_21: a - b
+
+		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<0, 0, 1, 1>(t_xyz), simd::Swizzle<1, 2, 2, 2>(_q));
+		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(_q), simd::Swizzle<2, 1, 0, 3>(t_xyz));
+
+		/// require write 
+		/// d 01 02
+		/// 10 d 12 
+		/// 20 21 d
+		__m128 r20_01_12 = _mm_add_ps(xy_xz_yz, w_zyx); //01_20_12
+		r20_01_12 = simd::Swizzle<1, 0, 2, 2>(r20_01_12);
+		__m128 r10_21_02 = _mm_sub_ps(xy_xz_yz, w_zyx); //10_02_21
+		r10_21_02 = simd::Swizzle<0, 2, 1, 1>(r10_21_02);
+
+		__m128 xC = _mm_blend_ps(_mm_blend_ps(diag, r20_01_12, 0b1110), r10_21_02, 0b1100);
+		__m128 yC = _mm_blend_ps(_mm_blend_ps(r10_21_02, diag, 0b1110), r20_01_12, 0b1100);
+		__m128 zC = _mm_blend_ps(_mm_blend_ps(r20_01_12, r10_21_02, 0b1110), diag, 0b1100);
+		//ensure affine bottom & translate 0, 0,0 1
+		__m128 mask = simd::LaneMask<1, 1, 1, 0>();
+
+		return Mat44(Vec4(_mm_and_ps(xC, mask)),
+			Vec4(_mm_and_ps(yC, mask)),
+			Vec4(_mm_and_ps(zC, mask)));
+
+#else
+		float x = q.X(), y = q.Y(),
+			z = q.Z(), w = q.W();
+		float tx = x + x;
+		float ty = y + y;
+		float tz = z + z;
+
+		float xx = tx * x;
+		float yy = ty * y;
+		float zz = tz * z;
+
+		float xy = tx * y;
+		float xz = tx * z;
+		float xw = tx * w;
+
+		float yz = ty * z;
+		float yw = ty * w;
+		float zw = tz * w;
+
+		/// basis axes
+		return Mat44(Vec4(1.0f - (yy + zz), xy + zw, xz - yw, 0.0f),
+			Vec4(xy - zw, (1.0f - zz) - xx, yz + xw, 0.0f),
+			Vec4(xz + yw, yz - xw, (1.0f - xx) - yy, 0.0f));
+#endif // VX_USE_SSE
+	}
+
+	
+
+	inline VX_INLINE Mat44 Mat44::RotationTranslation(const Quat& q, const Vec3& t)
+	{
+		////| [1 - 2(yy - zz) xy + wz        xz - wy] | T
+////| [xy - wz        1-2(xx - zz)]  yz + wx] |
+////| [xz + wy        yz - wx        1 - xx - yy] |
+
+/// assume Quat is unit quaternion 
+/// 
+////| [1 - (yy - zz)	  xy + wz         xz - wy]	 | T
+////| [	  xy - wz      1 - (xx - zz)]     yz + wx]   |
+////| [   xz + wy		  yz - wx      1 - (xx - yy)]|
+		VX_ASSERT(q.IsUnitQuat(), "Quaternion is not unit");
+
+#ifdef VX_USE_SSE
+
+
+		__m128 _q = q.XYZW().Value();
+
+		//[tx, ty, tz, tw]
+		__m128 t_xyz = _mm_add_ps(_q, _q);
+		//[xx, yy, zz, ww]
+		__m128 xx_yy_zz_ww = _mm_mul_ps(t_xyz, _q);
+
+
+		/// diag [yy + zz, xx + zz, xx + yy, 0]
+		__m128 diag = _mm_add_ps(simd::Swizzle<1, 0, 0, 3>(xx_yy_zz_ww), simd::Swizzle<2, 2, 1, 3>(xx_yy_zz_ww));
+		/// [1-(yy + zz), 1-(xx + zz), 1-(xx + yy)]
+		diag = _mm_sub_ps(_mm_set1_ps(1.0f), diag);
+
+		/// 01: xy + wz
+		/// 02: xz - wy
+		/// 
+		/// 10: xy - wz
+		/// 12: yz + wx
+		/// 
+		/// 20: zz + wy
+		/// 21: yz - wx
+		/// 
+		/// group 
+		/// 01: xy + wz
+		/// 10: xy - wz
+		/// 
+		/// 20: xz + wy
+		/// 02: xz - wy
+		/// 
+		/// 12: yz + wx
+		/// 21: yz - wx
+		/// 
+		/// 
+		/// a: xy xz yz
+		/// b: wz wy wx
+		/// 
+		/// 01_20_12: a + b
+		/// 10_02_21: a - b
+
+		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<0, 0, 1, 1>(t_xyz), simd::Swizzle<1, 2, 2, 2>(_q));
+		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(_q), simd::Swizzle<2, 1, 0, 3>(t_xyz));
+
+		/// require write 
+		/// d 01 02
+		/// 10 d 12 
+		/// 20 21 d
+		__m128 r20_01_12 = _mm_add_ps(xy_xz_yz, w_zyx); //01_20_12
+		r20_01_12 = simd::Swizzle<1, 0, 2, 2>(r20_01_12);
+		__m128 r10_21_02 = _mm_sub_ps(xy_xz_yz, w_zyx); //10_02_21
+		r10_21_02 = simd::Swizzle<0, 2, 1, 1>(r10_21_02);
+
+		__m128 xC = _mm_blend_ps(_mm_blend_ps(diag, r20_01_12, 0b1110), r10_21_02, 0b1100);
+		__m128 yC = _mm_blend_ps(_mm_blend_ps(r10_21_02, diag, 0b1110), r20_01_12, 0b1100);
+		__m128 zC = _mm_blend_ps(_mm_blend_ps(r20_01_12, r10_21_02, 0b1110), diag, 0b1100);
+		//ensure affine bottom & translate 0, 0,0 1
+		__m128 mask = simd::LaneMask<1, 1, 1, 0>();
+
+		return Mat44(Vec4(_mm_and_ps(xC, mask)),
+				Vec4(_mm_and_ps(yC, mask)),
+				Vec4(_mm_and_ps(zC, mask)),
+				Vec4(t, 1.0f));
+
+#else
+		float x = q.X(), y = q.Y(),
+			z = q.Z(), w = q.W();
+		float tx = x + x;
+		float ty = y + y;
+		float tz = z + z;
+
+		float xx = tx * x;
+		float yy = ty * y;
+		float zz = tz * z;
+
+		float xy = tx * y;
+		float xz = tx * z;
+		float xw = tx * w;
+
+		float yz = ty * z;
+		float yw = ty * w;
+		float zw = tz * w;
+
+		/// basis axes
+		return Mat44(Vec4(1.0f - (yy + zz), xy + zw, xz - yw, 0.0f),
+			Vec4(xy - zw, (1.0f - zz) - xx, yz + xw, 0.0f),
+			Vec4(xz + yw, yz - xw, (1.0f - xx) - yy, 0.0f),
+			Vec4(t, 1.0f));
+#endif // VX_USE_SSE
+	}
+
 	inline VX_INLINE float& Mat44::operator()(int row, int column)
 	{
 		VX_ASSERT(row < 4, "Row index out of bounds [0, 3]");
@@ -202,6 +413,68 @@ namespace vx
 	{
 		return mFloats[3] == 0.0f && mFloats[7] == 0.0f &&
 			mFloats[11] == 0.0f;
+	}
+
+	inline VX_INLINE bool Mat44::IsOrthonormal(float tolerance) const
+	{
+
+		if (Determinant3x3() < 0.0f) 
+			return false;
+
+#ifdef VX_USE_SSE
+
+
+		/// ????? 
+		/// _mm_cmpgt_ps ???
+		/// _mm_movemask_ps
+
+		__m128 x = GetAxisX().Value();
+		__m128 y = GetAxisY().Value();
+		__m128 z = GetAxisZ().Value();
+
+		const __m128 eps = _mm_set1_ps(tolerance);
+		const __m128 neg = _mm_set1_ps(-0.0f);
+
+		//[|x|^2, |y|^2, |z|^2, ?] 
+		__m128 len_sq = _mm_dp_ps(x, x, 0x71);
+		len_sq = _mm_blend_ps(len_sq, _mm_dp_ps(y, y, 0x72), 0b1110);
+		len_sq = _mm_blend_ps(len_sq, _mm_dp_ps(z, z, 0x74), 0b1100);
+
+		//|len_sq - 1|
+		__m128 diff = _mm_sub_ps(len_sq, _mm_set1_ps(1.0f));
+		diff = _mm_andnot_ps(neg, diff); //abs
+
+		if (_mm_movemask_ps(_mm_cmpgt_ps(diff, eps)) & 0x7)
+			return false;
+
+
+		// perpendicular
+		//[ x*y, x*z, y*z ]
+		__m128 dots = _mm_dp_ps(x, y, 0x71);
+		dots = _mm_blend_ps(dots, _mm_dp_ps(x, z, 0x72), 0b1110);
+		dots = _mm_blend_ps(dots, _mm_dp_ps(y, z, 0x74), 0b1100);
+
+		dots = _mm_andnot_ps(neg, dots); //abs
+
+		if (_mm_movemask_ps(_mm_cmpgt_ps(dots, eps)) & 0x7)
+			return false;
+		
+		return true;
+#else
+		Vec3 x = GetAxisX();
+		Vec3 y = GetAxisY();
+		Vec3 z = GetAxisZ();
+
+		if (VxAbs(x.LengthSq() - 1.0f) > tolerance)return false;
+		if (VxAbs(y.LengthSq() - 1.0f) > tolerance)return false;
+		if (VxAbs(z.LengthSq() - 1.0f) > tolerance)return false;
+
+		if (VxAbs(x.Dot(y)) > tolerance)return false;
+		if (VxAbs(x.Dot(z)) > tolerance)return false;
+		if (VxAbs(y.Dot(z)) > tolerance)return false;
+
+		return true;
+#endif // VX_USE_SSE
 	}
 
 	inline VX_INLINE Mat44 Mat44::Transposed3x3() const
@@ -991,10 +1264,180 @@ namespace vx
 		return Multiply3x3Transposed(vec);
 	}
 
-	inline VX_INLINE Mat44 Mat44::GetRotation() const
+	inline VX_INLINE void Mat44::SetRotation(const Quat& q)
+	{
+
+		////| [1 - 2(yy - zz) xy + wz        xz - wy] | T
+		////| [xy - wz        1-2(xx - zz)]  yz + wx] |
+		////| [xz + wy        yz - wx        1 - xx - yy] |
+
+		/// assume Quat is unit quaternion 
+		/// 
+		////| [1 - (yy - zz)	  xy + wz         xz - wy]	 | T
+		////| [	  xy - wz      1 - (xx - zz)]     yz + wx]   |
+		////| [   xz + wy		  yz - wx      1 - (xx - yy)]|
+		VX_ASSERT(q.IsUnitQuat(), "Quaternion is not unit");
+
+#ifdef VX_USE_SSE
+
+
+		__m128 _q = q.XYZW().Value();
+
+		//[tx, ty, tz, tw]
+		__m128 t_xyz = _mm_add_ps(_q, _q);
+		//[xx, yy, zz, ww]
+		__m128 xx_yy_zz_ww = _mm_mul_ps(t_xyz, _q);
+
+
+		/// diag [yy + zz, xx + zz, xx + yy, 0]
+		__m128 diag = _mm_add_ps(simd::Swizzle<1, 0, 0, 3>(xx_yy_zz_ww), simd::Swizzle<2, 2, 1, 3>(xx_yy_zz_ww));
+		/// [1-(yy + zz), 1-(xx + zz), 1-(xx + yy)]
+		diag = _mm_sub_ps(_mm_set1_ps(1.0f), diag);
+
+		/// 01: xy + wz
+		/// 02: xz - wy
+		/// 
+		/// 10: xy - wz
+		/// 12: yz + wx
+		/// 
+		/// 20: zz + wy
+		/// 21: yz - wx
+		/// 
+		/// group 
+		/// 01: xy + wz
+		/// 10: xy - wz
+		/// 
+		/// 20: xz + wy
+		/// 02: xz - wy
+		/// 
+		/// 12: yz + wx
+		/// 21: yz - wx
+		/// 
+		/// 
+		/// a: xy xz yz
+		/// b: wz wy wx
+		/// 
+		/// 01_20_12: a + b
+		/// 10_02_21: a - b
+
+		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<0, 0, 1, 1>(t_xyz), simd::Swizzle<1, 2, 2, 2>(_q));
+		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(_q), simd::Swizzle<2, 1, 0, 3>(t_xyz));
+
+		/// require write 
+		/// d 01 02
+		/// 10 d 12 
+		/// 20 21 d
+		__m128 r20_01_12 = _mm_add_ps(xy_xz_yz, w_zyx); //01_20_12
+		r20_01_12 = simd::Swizzle<1, 0, 2, 2>(r20_01_12);
+		__m128 r10_21_02 = _mm_sub_ps(xy_xz_yz, w_zyx); //10_02_21
+		r10_21_02 = simd::Swizzle<0, 2, 1, 1>(r10_21_02);
+
+		__m128 xC = _mm_blend_ps(_mm_blend_ps(diag, r20_01_12, 0b1110), r10_21_02, 0b1100);
+		__m128 yC = _mm_blend_ps(_mm_blend_ps(r10_21_02, diag, 0b1110), r20_01_12, 0b1100);
+		__m128 zC = _mm_blend_ps(_mm_blend_ps(r20_01_12, r10_21_02, 0b1110), diag, 0b1100);
+		//ensure affine bottom & translate 0, 0,0 1
+		__m128 mask = simd::LaneMask<1, 1, 1, 0>();
+
+		//ensure affine
+		mCol[0] = _mm_and_ps(xC, mask);
+		mCol[1] = _mm_and_ps(yC, mask);
+		mCol[2] = _mm_and_ps(zC, mask);
+
+#else
+
+		float x = q.X(), y = q.Y(),
+			z = q.Z(), w = q.W();
+		float tx = x + x;
+		float ty = y + y;
+		float tz = z + z;
+
+		float xx = tx * x;
+		float yy = ty * y;
+		float zz = tz * z;
+
+		float xy = tx * y;
+		float xz = tx * z;
+		float xw = tx * w;
+
+		float yz = ty * z;
+		float yw = ty * w;
+		float zw = tz * w;
+
+
+		/// basis axes
+		mCol[0] = Vec4(1.0f - (yy + zz), xy + zw, xz - yw, 0.0f);
+		mCol[1] = Vec4(xy - zw, (1.0f - zz) - xx, yz + xw, 0.0f);
+		mCol[2] = Vec4(xz + yw, yz - xw, (1.0f - xx) - yy, 0.0f);
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE void Mat44::SetRotationAndTranslation(const Quat& q, const Vec3& pos)
+	{
+		SetRotation(q);
+		SetTranslation(pos);
+	}
+
+	inline VX_INLINE Mat44 Mat44::GetRotationMat33() const
 	{
 		VX_ASSERT(IsAffine3x3(), "Ensure its affine");
 		return Mat44(mCol[0], mCol[1], mCol[2]);
+	}
+
+	inline VX_INLINE Quat Mat44::GetRotationQuat() const
+	{
+		VX_ASSERT(IsOrthonormal(), "Mat44 must be orthonormal");
+
+		float trace = mFloats[0] + mFloats[5] + mFloats[10];
+
+		if (trace > kEpsilon)
+		{
+			float s_factor = VxSqrt(trace + 1.0f);
+			float inv_s = 0.5f / s_factor;
+			return Quat(
+				(mFloats[9] - mFloats[6]) * inv_s,
+				(mFloats[2] - mFloats[8]) * inv_s,
+				(mFloats[4] - mFloats[1]) * inv_s,
+				0.5f * s_factor);
+		}
+		else
+		{
+			if (mFloats[0] > mFloats[5] && mFloats[0] > mFloats[10])
+			{
+				float s_factor = VxSqrt(VxMax(mFloats[0] - mFloats[1] - mFloats[2] + 1.0f, 0.0f));
+				float inv_s = 0.5f / s_factor;
+
+				return Quat(
+					0.5f * s_factor,
+					(mFloats[9] - mFloats[6]) * inv_s,
+					(mFloats[1] - mFloats[4]) * inv_s,
+					(mFloats[2] - mFloats[8]) * inv_s
+				);
+			}
+			else if (mFloats[5] > mFloats[10])
+			{
+				float s_factor = VxSqrt(VxMax(mFloats[5] - mFloats[0] - mFloats[10] + 1.0f, 0.0f));
+				float inv_s = 0.5f / s_factor;
+
+				return Quat(
+					(mFloats[1] + mFloats[4]) * inv_s,
+					0.5f * s_factor,
+					(mFloats[6] + mFloats[9]) * inv_s,
+					(mFloats[2] - mFloats[8]) * inv_s
+				);
+			}
+			else
+			{
+				float s_factor = VxSqrt(VxMax(mFloats[10] - mFloats[0] - mFloats[5] + 1.0f, 0.0f));
+				float inv_s = 0.5f / s_factor;
+
+				return Quat(
+					(mFloats[2] + mFloats[8]) * inv_s,
+					(mFloats[6] + mFloats[9]) * inv_s,
+					0.5f * s_factor,
+					(mFloats[4] - mFloats[1]) * inv_s
+				);
+			}
+		}
 	}
 
 

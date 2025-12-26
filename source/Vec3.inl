@@ -65,7 +65,7 @@ namespace vx
 	inline VX_INLINE float Vec3::GetLane(const Vec3& v, int idx)
 	{
 #ifdef VX_USE_SSE
-		return Get_m128Lane(v.mValue, idx);
+		return simd::Lane128(v.mValue, idx);
 #else
 		return v.mFloats[idx];
 #endif // VX_USE_SSE
@@ -126,6 +126,11 @@ namespace vx
 	inline VX_INLINE bool Vec3::IsApprox(const Vec3& rhs, float eps_sq) const
 	{
 		return (rhs - *this).LengthSq() <= eps_sq;
+	}
+
+	inline VX_INLINE bool Vec3::IsNormalised(float tolerance) const
+	{
+		return VxAbs(LengthSq() - 1.0f) <= tolerance;
 	}
 
 
@@ -704,9 +709,9 @@ namespace vx
 	template<int X, int Y, int Z>
 	inline VX_INLINE void vx::Vec3::FlipSignAssign()
 	{
-		VX_ASSERT(X() == 1 || X() == -1 ||
-			Y() == 1 || Y() == -1 ||
-			Z() == 1 || Z() == -1, "out of bounds range [-1, 1]");
+		VX_ASSERT(X == 1 || X == -1 ||
+			Y == 1 || Y == -1 ||
+			Z == 1 || Z == -1, "out of bounds range [-1, 1]");
 
 #ifdef VX_USE_SSE
 		mValue = _mm_xor_ps(mValue, simd::SignMask<X, Y, Z, Z>());

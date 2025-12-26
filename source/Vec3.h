@@ -59,6 +59,7 @@ namespace vx
 		VX_INLINE bool IsNaN() const;
 		VX_INLINE bool IsZero(float eps = 1e-6f) const;
 		VX_INLINE bool IsApprox(const Vec3& rhs, float eps_sq = 1e-12f) const;
+		VX_INLINE bool IsNormalised(float tolerance = 1e-6f) const;
 
 		VX_INLINE Vec3 operator+(const Vec3& rhs) const;
 		VX_INLINE Vec3& operator+=(const Vec3& rhs);

@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Vec4.h"
+
 namespace vx
 {
 
@@ -117,8 +118,17 @@ namespace vx
 		static VX_INLINE Mat44 RotationZ(float angle);
 		static VX_INLINE Mat44 Basis(const Vec3& x, const Vec3& y, const Vec3& z);
 		static VX_INLINE Mat44 BasisTranslation(const Vec3& x, const Vec3& y, const Vec3& z, const Vec3& t);
-		//static VX_INLINE Mat44 Rotation(const Quat& q);
-		//static VX_INLINE Mat44 RotationTranslation(const Quat& q, const Vec3& t);
+		
+		/// Builds a 4x4 rotation matrix (R - 3x3) from a unit quaternion 
+		/// Translation is zero, bottom [0, 0, 0, 1]
+		/// | R 0 |
+		/// | 0 1 |
+		static VX_INLINE Mat44 Rotation(const Quat& q);
+		/// Builds a 4x4 Translation rotation matrix (R - 3x3) from a unit quaternion 
+		/// Translation is zero, bottom [0, 0, 0, 1]
+		/// | R t |
+		/// | 0 1 |
+		static VX_INLINE Mat44 RotationTranslation(const Quat& q, const Vec3& t);
 
 		//Accessor
 		VX_INLINE float& operator()(int row, int column);
@@ -157,6 +167,7 @@ namespace vx
 		VX_INLINE int GetBasisHandness() const;
 		VX_INLINE bool IsAffine() const;
 		VX_INLINE bool IsAffine3x3() const;
+		VX_INLINE bool IsOrthonormal(float tolerance = 1e-4f) const;
 		VX_INLINE Mat44 Transposed3x3() const;
 		VX_INLINE Mat44 Transposed() const;
 		VX_INLINE Mat44 Inverse3x3() const;
@@ -196,9 +207,21 @@ namespace vx
 		/// Assue pure rotation (no scale/shear).
 		VX_INLINE Vec3 TransformInverseDirection(const Vec3& vec) const;
 
+		/// Sets the rotation part of matrix from a unit quaternion 
+		/// Translation preserved, bottom [0, 0, 0, 1]
+		/// | R t |
+		/// | 0 1 |
+		VX_INLINE void SetRotation(const Quat& q);
+		/// Set both rotation and translation components from a quaternion and translation
+		/// @param q Quaternion representing rotation
+		/// @param pos Translation Vector
+		VX_INLINE void SetRotationAndTranslation(const Quat& q, const Vec3& pos);
 
-
-		VX_INLINE Mat44 GetRotation() const;
+		VX_INLINE Mat44 GetRotationMat33() const;
+		/// Extract the rotation component of matrix as quartenion 
+		/// matrix must represnet pure rotation (ortho nor 3x3)
+		/// UB, if matix contain scale or shear
+		VX_INLINE Quat GetRotationQuat() const;
 
 		/// post scale matrix == pre scale 
 		/// for affine transform, pre/post are equivalenrt

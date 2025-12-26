@@ -90,7 +90,7 @@ namespace vx
 	inline VX_INLINE float Vec4::GetLane(const Vec4& v, int idx)
 	{
 #ifdef VX_USE_SSE
-		return Get_m128Lane(v.mValue, idx);
+		return simd::Lane128(v.mValue, idx);
 #else
 		return v.mFloats[idx];
 #endif // USE_SIMD_SSE

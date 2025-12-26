@@ -1,8 +1,9 @@
 #pragma once
 
 #include "Core.h"
-#include "Vec4.h"
-#include "Mat44.h"
+//#include "Mat44.h"
+//#include "Vec4.h"
+//#include "Vec3.h"
 
 namespace vx
 {
@@ -45,7 +46,7 @@ namespace vx
 		static VX_INLINE Quat FromAxisAngle(const Vec3& axis, float angle);
 
 		VX_INLINE void SetAxisAngle(const Vec3& axis, float angle);
-		VX_INLINE void GetAxisAngle(Vec3& axis, float angle);
+		VX_INLINE void GetAxisAngle(Vec3& o_axis, float& o_angle);
 
 
 		VX_INLINE void Normalise();
@@ -100,6 +101,12 @@ namespace vx
 		VX_INLINE Vec3 operator*(const Vec3& vec) const { return Rotate(vec); }
 
 		VX_INLINE Quat operator/(float rhs) const { return Quat(mValue / rhs); }
+
+		VX_INLINE friend std::ostream& operator<<(std::ostream& os, const Quat& q)
+		{
+			os << "Quat(" << q.X() << ", " << q.Y() << ", " << q.Z() << ", " << q.W() << ")";
+			return os;
+		}
 
 	private:
 		Vec4 mValue;

@@ -1,7 +1,46 @@
 #include "Quat.h"
+#include "Mat44.h"
 
 namespace vx
 {
+	inline VX_INLINE Quat Quat::FromAxisAngle(const Vec3& axis, float angle)
+	{
+		/// imaginary xyz: axis * sin(half_angle) 
+		/// real w:				  cos(half_angle)
+		VX_ASSERT(axis.IsNormalised(), "Axis must be non-zero & normalised");
+
+		float h = 0.5f * angle;//half
+		float s = VxSin(h);
+
+		return Quat(axis * s, VxCos(h));
+	}
+	inline VX_INLINE void Quat::SetAxisAngle(const Vec3& axis, float angle)
+	{
+		/// imaginary xyz: axis * sin(half_angle) 
+		/// real w:				  cos(half_angle)
+		VX_ASSERT(axis.IsNormalised(), "Axis must be non-zero & normalised");
+
+		float h = 0.5f * angle;//half
+		float s = VxSin(h);
+
+		mValue = Vec4(axis * s, VxCos(h));
+	}
+	inline VX_INLINE void Quat::GetAxisAngle(Vec3& o_axis, float& o_angle)
+	{
+		VX_ASSERT(IsUnitQuat(), "Quat must be normalised");
+
+		//shortest angle
+		float w = VxMin(VxAbs(W()), 1.0f);
+		
+		o_angle = 2.0f * VxAcos(w);
+
+		float s_sq = 1.0f - w * w;//==sin^2(angle/2)
+
+		if (s_sq < kEpsilon * kEpsilon)
+			o_axis = Vec3::Zero();
+		else
+			o_axis = (1.0f / VxSqrt(s_sq)) * Imaginary();
+	}
 	VX_INLINE void Quat::Normalise()
 	{
 		float len = mValue.Length();
@@ -227,43 +266,79 @@ namespace vx
 
 	inline VX_INLINE void Quat::RotateScaledAxes(const Vec3& scale, Vec3& out_x, Vec3& out_y, Vec3& out_z)
 	{
-		VX_ASSERT(IsUnitQuat(), "Quaternion is not unit");
 
-		//| [1 - 2(yy - zz)] [2(xy - wz)] [2(xz+wy)] |
-		//| [2(xy + wz)]   [1-2(xx - zz)] [2(yz - wx)]|
-		//| [2(xz - wy)] [2(yz + wz)] [1 - 2(xx - yy)]|
-		//||
+		////| [1 - 2(yy - zz) xy + wz        xz - wy] | T
+		////| [xy - wz        1-2(xx - zz)]  yz + wx] |
+		////| [xz + wy        yz - wx        1 - xx - yy] |
+
+		/// assume Quat is unit quaternion 
+		/// 
+		////| [1 - (yy - zz)	  xy + wz         xz - wy]	 | T
+		////| [	  xy - wz      1 - (xx - zz)]     yz + wx]   |
+		////| [   xz + wy		  yz - wx      1 - (xx - yy)]|
+		VX_ASSERT(IsUnitQuat(), "Quaternion is not unit");
 
 #ifdef VX_USE_SSE
 
 		__m128 q = mValue.Value();
-		__m128 s = scale.Value();
 
-		__m128 two = _mm_add_ps(q, q);
-		__m128 t = _mm_mul_ps(two, q);
+		//[tx, ty, tz, tw]
+		__m128 t_xyz = _mm_add_ps(q, q);
+		//[xx, yy, zz, ww]
+		__m128 xx_yy_zz_ww = _mm_mul_ps(t_xyz, q);
 
 
 		/// diag [yy + zz, xx + zz, xx + yy, 0]
-		__m128 diag = _mm_add_ps(simd::Swizzle<1, 0, 0, 3>(t), simd::Swizzle<2, 2, 1, 3>(t));
+		__m128 diag = _mm_add_ps(simd::Swizzle<1, 0, 0, 3>(xx_yy_zz_ww), simd::Swizzle<2, 2, 1, 3>(xx_yy_zz_ww));
 		/// [1-(yy + zz), 1-(xx + zz), 1-(xx + yy)]
 		diag = _mm_sub_ps(_mm_set1_ps(1.0f), diag);
 
-		__m128 xyz = _mm_mul_ps(simd::Swizzle<0, 0, 1, 3>(two), simd::Swizzle<1, 2, 2, 3>(q));
-		__m128 w_xyz = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(two), simd::Swizzle<2, 1, 0, 3>(q));
+		/// 01: xy + wz
+		/// 02: xz - wy
+		/// 
+		/// 10: xy - wz
+		/// 12: yz + wx
+		/// 
+		/// 20: zz + wy
+		/// 21: yz - wx
+		/// 
+		/// group 
+		/// 01: xy + wz
+		/// 10: xy - wz
+		/// 
+		/// 20: xz + wy
+		/// 02: xz - wy
+		/// 
+		/// 12: yz + wx
+		/// 21: yz - wx
+		/// 
+		/// 
+		/// a: xy xz yz
+		/// b: wz wy wx
+		/// 
+		/// 01_20_12: a + b
+		/// 10_02_21: a - b
+	
+		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<0, 0, 1, 1>(t_xyz), simd::Swizzle<1, 2, 2, 2>(q));
+		//__m128 w_zyx = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(t_xyz), simd::Swizzle<2, 1, 0, 3>(q));
+		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(q), simd::Swizzle<2, 1, 0, 3>(t_xyz));
 
-		
-		__m128 r = _mm_add_ps(simd::Swizzle<0, 0, 0, 0>(diag, xyz),
-				simd::FlipSign<1, 1, -1, 1>(simd::Swizzle<1, 2, 0, 0>(xyz, w_xyz)));
+		/// require write 
+		/// d 01 02
+		/// 10 d 12 
+		/// 20 21 d
+		__m128 r20_01_12 = _mm_add_ps(xy_xz_yz, w_zyx); //01_20_12
+		r20_01_12 = simd::Swizzle<1, 0, 2, 2>(r20_01_12);
+		__m128 r10_21_02 = _mm_sub_ps(xy_xz_yz, w_zyx); //10_02_21
+		r10_21_02 = simd::Swizzle<0, 2, 1, 1>(r10_21_02);
+
+		__m128 s = scale.Value();
+		__m128 r = _mm_blend_ps(_mm_blend_ps(diag, r20_01_12, 0b1110), r10_21_02, 0b1100);
 		out_x = Vec3(_mm_mul_ps(r, simd::Swizzle<0, 0, 0, 0>(s)));
-
-		r = _mm_add_ps(simd::Swizzle<1, 0, 1, 0>(xyz, diag),
-				simd::FlipSign<-1, 1, 1, 1>(simd::Swizzle<2, 0, 2, 0>(w_xyz, xyz)));
+		r = _mm_blend_ps(_mm_blend_ps(r10_21_02, diag, 0b1110), r20_01_12, 0b1100);
 		out_y = Vec3(_mm_mul_ps(r, simd::Swizzle<1, 1, 1, 1>(s)));
-
-		r = _mm_add_ps(simd::Swizzle<0, 1, 1, 0>(w_xyz, xyz),
-				simd::Swizzle<2, 2, 2, 0>(w_xyz, diag));
+		r = _mm_blend_ps(_mm_blend_ps(r20_01_12, r10_21_02, 0b1110), diag, 0b1100);
 		out_z = Vec3(_mm_mul_ps(r, simd::Swizzle<2, 2, 2, 2>(s)));
-				
 
 #else
 		float tx = X() + X();
@@ -291,38 +366,81 @@ namespace vx
 
 	inline VX_INLINE Mat44 Quat::GetRotationMat44()
 	{
+
+		////| [1 - 2(yy - zz) xy + wz        xz - wy] | T
+		////| [xy - wz        1-2(xx - zz)]  yz + wx] |
+		////| [xz + wy        yz - wx        1 - xx - yy] |
+
+		/// assume Quat is unit quaternion 
+		/// 
+		////| [1 - (yy - zz)	  xy + wz         xz - wy]	 | T
+		////| [	  xy - wz      1 - (xx - zz)]     yz + wx]   |
+		////| [   xz + wy		  yz - wx      1 - (xx - yy)]|
+		VX_ASSERT(IsUnitQuat(), "Quaternion is not unit");
+
 #ifdef VX_USE_SSE
 
 
 		__m128 q = mValue.Value();
-		__m128 two = _mm_add_ps(q, q);
-		__m128 t = _mm_mul_ps(two, q);
+
+		//[tx, ty, tz, tw]
+		__m128 t_xyz = _mm_add_ps(q, q);
+		//[xx, yy, zz, ww]
+		__m128 xx_yy_zz_ww = _mm_mul_ps(t_xyz, q);
 
 
 		/// diag [yy + zz, xx + zz, xx + yy, 0]
-		__m128 diag = _mm_add_ps(simd::Swizzle<1, 0, 0, 3>(t), simd::Swizzle<2, 2, 1, 3>(t));
+		__m128 diag = _mm_add_ps(simd::Swizzle<1, 0, 0, 3>(xx_yy_zz_ww), simd::Swizzle<2, 2, 1, 3>(xx_yy_zz_ww));
 		/// [1-(yy + zz), 1-(xx + zz), 1-(xx + yy)]
 		diag = _mm_sub_ps(_mm_set1_ps(1.0f), diag);
 
-		__m128 xyz = _mm_mul_ps(simd::Swizzle<0, 0, 1, 3>(two), simd::Swizzle<1, 2, 2, 3>(q));
-		__m128 w_xyz = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(two), simd::Swizzle<2, 1, 0, 3>(q));
+		/// 01: xy + wz
+		/// 02: xz - wy
+		/// 
+		/// 10: xy - wz
+		/// 12: yz + wx
+		/// 
+		/// 20: zz + wy
+		/// 21: yz - wx
+		/// 
+		/// group 
+		/// 01: xy + wz
+		/// 10: xy - wz
+		/// 
+		/// 20: xz + wy
+		/// 02: xz - wy
+		/// 
+		/// 12: yz + wx
+		/// 21: yz - wx
+		/// 
+		/// 
+		/// a: xy xz yz
+		/// b: wz wy wx
+		/// 
+		/// 01_20_12: a + b
+		/// 10_02_21: a - b
 
+		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<0, 0, 1, 1>(t_xyz), simd::Swizzle<1, 2, 2, 2>(q));
+		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(q), simd::Swizzle<2, 1, 0, 3>(t_xyz));
 
-		__m128 c0 = _mm_add_ps(simd::Swizzle<0, 0, 0, 0>(diag, xyz),
-					simd::FlipSign<1, 1, -1, 1>(simd::Swizzle<1, 2, 0, 0>(xyz, w_xyz)));
+		/// require write 
+		/// d 01 02
+		/// 10 d 12 
+		/// 20 21 d
+		__m128 r20_01_12 = _mm_add_ps(xy_xz_yz, w_zyx); //01_20_12
+		r20_01_12 = simd::Swizzle<1, 0, 2, 2>(r20_01_12);
+		__m128 r10_21_02 = _mm_sub_ps(xy_xz_yz, w_zyx); //10_02_21
+		r10_21_02 = simd::Swizzle<0, 2, 1, 1>(r10_21_02);
 
-		__m128 c1 = _mm_add_ps(simd::Swizzle<1, 0, 1, 0>(xyz, diag),
-				simd::FlipSign<-1, 1, 1, 1>(simd::Swizzle<2, 0, 2, 0>(w_xyz, xyz)));
-
-		__m128 c2 = _mm_add_ps(simd::Swizzle<0, 1, 1, 0>(w_xyz, xyz),
-				simd::Swizzle<2, 2, 2, 0>(w_xyz, diag));
-
+		__m128 xC = _mm_blend_ps(_mm_blend_ps(diag, r20_01_12, 0b1110), r10_21_02, 0b1100);
+		__m128 yC = _mm_blend_ps(_mm_blend_ps(r10_21_02, diag, 0b1110), r20_01_12, 0b1100);
+		__m128 zC = _mm_blend_ps(_mm_blend_ps(r20_01_12, r10_21_02, 0b1110), diag, 0b1100);
 		//ensure affine bottom & translate 0, 0,0 1
-		__m128 mask = simd::LaneMask<-1, -1, -1, 0>();
+		__m128 mask = simd::LaneMask<1, 1, 1, 0>();
 	
-		return Mat44(Vec4(_mm_and_ps(c0, mask)),
-					 Vec4(_mm_and_ps(c1, mask)),
-					 Vec4(_mm_and_ps(c2, mask)));
+		return Mat44(Vec4(_mm_and_ps(xC, mask)),
+					 Vec4(_mm_and_ps(yC, mask)),
+					 Vec4(_mm_and_ps(zC, mask)));
 
 #else
 
@@ -363,8 +481,8 @@ namespace vx
 		__m128 q2 = rhs.mValue.Value();
 
 		//w
-		__m128 w1 = mValue.SplatW().Value();
-		__m128 w2 = mValue.SplatW().Value();
+		__m128 w1 = simd::Swizzle<3, 3, 3, 3>(q1);
+		__m128 w2 = simd::Swizzle<3, 3, 3, 3>(q2);
 
 		__m128 v = _mm_add_ps(
 			_mm_mul_ps(w1, q2),
@@ -372,10 +490,10 @@ namespace vx
 		);
 
 		//cross v1, v2
-		__m128 v1_yzx = _mm_shuffle_ps(q1, q1, _MM_SHUFFLE(3, 0, 2, 1));
-		__m128 v2_zxy = _mm_shuffle_ps(q2, q2, _MM_SHUFFLE(3, 1, 0, 2));
-		__m128 v1_zxy = _mm_shuffle_ps(q1, q1, _MM_SHUFFLE(3, 1, 0, 2));
-		__m128 v2_yzx = _mm_shuffle_ps(q2, q2, _MM_SHUFFLE(3, 0, 2, 1));
+		__m128 v1_yzx = simd::Swizzle<1, 2, 0, 3>(q1);
+		__m128 v2_zxy = simd::Swizzle<2, 0, 1, 3>(q2);
+		__m128 v1_zxy = simd::Swizzle<2, 0, 1, 3>(q1);
+		__m128 v2_yzx = simd::Swizzle<1, 2, 0, 3>(q2);
 
 		__m128 cross = _mm_sub_ps(
 			_mm_mul_ps(v1_yzx, v2_zxy),
@@ -385,14 +503,16 @@ namespace vx
 		//xyz = w1*v2+w2*v1+cross
 		__m128 xyz = _mm_add_ps(v, cross);
 
-		//w = w1*w2 - dot(v1,v2)
-		//0x7f -> 0111 1111 : op first 3 & store 4 (first)
-		__m128 dot = _mm_dp_ps(q1, q2, 0x7f);
+		/// w = w1*w2 - dot(v1,v2)
+		/// 1 lane 
+		/// 0x7f -> 0111 1111 : op first 3 & store 4 (first)
+		/// 0x71 -> 0111 0001 : op first 3 & store 1 (first)
+		/// 0x78 -> 0111 1000 : op first 3 & store 1 (last)
+		__m128 dot = _mm_dp_ps(q1, q2, 0x78);
 		__m128 w = _mm_sub_ps(_mm_mul_ps(w1, w2), dot);
 
 		//xyz +w
 		mValue = _mm_blend_ps(xyz, w, 0b1000);
-
 		return *this;
 
 #else
@@ -402,7 +522,7 @@ namespace vx
 		float rz = rhs.Z();
 		float rw = rhs.W();
 
-		mValue Vec4(
+		mValue = Vec4(
 			W() * rx + X() * rw + Y() * rz - Z() * ry,
 			W() * ry - X() * rz + Y() * rw + Z() * rx,
 			W() * rz + X() * ry - Y() * rx + Z() * rw,
