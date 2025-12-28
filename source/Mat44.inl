@@ -1387,57 +1387,59 @@ namespace vx
 	{
 		VX_ASSERT(IsOrthonormal(), "Mat44 must be orthonormal");
 
-		float trace = mFloats[0] + mFloats[5] + mFloats[10];
+
+		float m00 = mFloats[0];
+		float m11 = mFloats[5];
+		float m22 = mFloats[10];
+
+		float trace = m00 + m11 + m22;
+
+		float qx, qy, qz, qw;
 
 		if (trace > kEpsilon)
 		{
 			float s_factor = VxSqrt(trace + 1.0f);
 			float inv_s = 0.5f / s_factor;
-			return Quat(
-				(mFloats[9] - mFloats[6]) * inv_s,
-				(mFloats[2] - mFloats[8]) * inv_s,
-				(mFloats[4] - mFloats[1]) * inv_s,
-				0.5f * s_factor);
+
+			qx = (mFloats[6] - mFloats[9]) * inv_s;
+			qy = (mFloats[8] - mFloats[2]) * inv_s;
+			qz = (mFloats[1] - mFloats[4]) * inv_s;
+			qw = 0.5f * s_factor;
+		}
+		else if (m00 > m11 && m00 > m22)
+		{
+			float s_factor = VxSqrt(m00 - m11 - m22 + 1.0f);
+			float inv_s = 0.5f / s_factor; 
+
+			qx = 0.5f * s_factor;
+			qy = (mFloats[1] + mFloats[4]) * inv_s;
+			qz = (mFloats[8] + mFloats[2]) * inv_s;
+			qw = (mFloats[6] - mFloats[9]) * inv_s;
+		}
+		else if (m11 > m22)
+		{
+			float s_factor = VxSqrt(m11 - m00 - m22 + 1.0f);
+			float inv_s = 0.5f / s_factor;
+
+			qx = (mFloats[1] + mFloats[4]) * inv_s;
+			qy = 0.5f * s_factor;
+			qz = (mFloats[6] + mFloats[9]) * inv_s;
+			qw = (mFloats[8] - mFloats[2]) * inv_s;
+			
 		}
 		else
 		{
-			if (mFloats[0] > mFloats[5] && mFloats[0] > mFloats[10])
-			{
-				float s_factor = VxSqrt(VxMax(mFloats[0] - mFloats[1] - mFloats[2] + 1.0f, 0.0f));
-				float inv_s = 0.5f / s_factor;
+			float s_factor = VxSqrt(m22 - m00 - m11 + 1.0f);
+			float inv_s = 0.5f / s_factor;
 
-				return Quat(
-					0.5f * s_factor,
-					(mFloats[9] - mFloats[6]) * inv_s,
-					(mFloats[1] - mFloats[4]) * inv_s,
-					(mFloats[2] - mFloats[8]) * inv_s
-				);
-			}
-			else if (mFloats[5] > mFloats[10])
-			{
-				float s_factor = VxSqrt(VxMax(mFloats[5] - mFloats[0] - mFloats[10] + 1.0f, 0.0f));
-				float inv_s = 0.5f / s_factor;
-
-				return Quat(
-					(mFloats[1] + mFloats[4]) * inv_s,
-					0.5f * s_factor,
-					(mFloats[6] + mFloats[9]) * inv_s,
-					(mFloats[2] - mFloats[8]) * inv_s
-				);
-			}
-			else
-			{
-				float s_factor = VxSqrt(VxMax(mFloats[10] - mFloats[0] - mFloats[5] + 1.0f, 0.0f));
-				float inv_s = 0.5f / s_factor;
-
-				return Quat(
-					(mFloats[2] + mFloats[8]) * inv_s,
-					(mFloats[6] + mFloats[9]) * inv_s,
-					0.5f * s_factor,
-					(mFloats[4] - mFloats[1]) * inv_s
-				);
-			}
+		
+			qx = (mFloats[8] + mFloats[2]) * inv_s;
+			qy = (mFloats[6] + mFloats[9]) * inv_s;
+			qz = 0.5f * s_factor;
+			qw = (mFloats[1] - mFloats[4]) * inv_s;
 		}
+
+		return Quat(qx, qy, qz, qw);
 	}
 
 

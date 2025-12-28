@@ -12,7 +12,6 @@
 
 #endif // defined(USE_SIMD_SSE)
 
-
 #define VX_ASSERT(expr, ...) \
 		do { if(!(expr)) { \
 				std::cout << "Assertion Failed (" << #expr << "): \nMessage: " << __VA_ARGS__ << ".\nFile: " << __FILE__ << ".\nLine: " << __LINE__ << ".\n"; \
@@ -27,5 +26,4 @@ namespace vx {
 	class Mat44;
 	class Quat;
 }
-
 

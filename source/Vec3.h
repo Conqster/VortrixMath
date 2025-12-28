@@ -129,6 +129,9 @@ namespace vx
 		VX_INLINE Vec3 Inverted() const;
 		VX_INLINE Vec3& Invert();
 
+		VX_INLINE Vec3 Perpendicular() const;
+		VX_INLINE Vec3 NormalisedPerpendicular() const;
+
 		///Component wise Square root
 		VX_INLINE Vec3 Sqrt() const;
 		///Component wise Square root in place 

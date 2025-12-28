@@ -1,6 +1,7 @@
 #include "TestCommon.h"
 #include "Mat44.h"
 
+
 TEST_SUITE("Mat44 Test")
 {
 	TEST_CASE("Mat44 Identity")
@@ -543,6 +544,53 @@ TEST_SUITE("Mat44 Test")
 
 		//TranformDir -> TransformInverseDir should recover original
 		CHECK_APPROX_EQ(dir_inv, v);
+
+	}
+
+
+	TEST_CASE("Test Mat44 Quat Rotation")
+	{
+		vx::Quat q = vx::Quat::FromAxisAngle(vx::Vec3(0.3f, 0.7f, 0.5f).Normalised(), vx::kVxPi * 0.5f);
+
+		vx::Mat44 R = vx::Mat44::Rotation(q);
+
+		CHECK(R.IsOrthonormal());
+
+		vx::Quat q_out = R.GetRotationQuat();
+
+		CHECK_APPROX_EQ(q.Dot(q_out), 1.0f);
+
+		CHECK(R.GetTranslation() == vx::Vec3::Zero());
+		CHECK(R.IsAffine()); //ensure affine
+	}
+
+
+	TEST_CASE("Test Mat44 Rotation Translation")
+	{
+		vx::Quat q = vx::Quat::FromAxisAngle(vx::Vec3(0.3f, 0.7f, 0.5f).Normalised(), vx::kVxPi * 0.5f);
+		vx::Vec3 t(1.0f, -2.0f, 3.0f);
+
+
+		vx::Mat44 Rt = vx::Mat44::RotationTranslation(q, t);
+
+		CHECK(Rt.IsOrthonormal());
+		CHECK(Rt.GetTranslation() == t);
+		CHECK(Rt.IsAffine()); //ensure affine
+
+		vx::Quat q_out = Rt.GetRotationQuat();
+
+		CHECK_APPROX_EQ(q.Dot(q_out), 1.0f);
+
+
+		vx::Mat44 M(1.0f);
+		M.SetTranslation(t);
+		M.SetRotation(q);
+
+		CHECK(M == Rt);
+		vx::Mat44 M1(1.0f);
+		M1.SetRotationAndTranslation(q, t);
+		CHECK(M1 == Rt);
+
 
 	}
 }

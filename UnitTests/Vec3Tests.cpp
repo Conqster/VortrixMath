@@ -277,5 +277,24 @@ TEST_SUITE("Vec3 Tests")
 		CHECK_APPROX_EQ(a.CosAngle(b), cos_ref);
 		CHECK_APPROX_EQ(a.Angle(b), vx::VxAcos(cos_ref));
 
+
+		v = vx::Vec3(1, 2, 3);
+		vx::Vec3 p1 = v.Perpendicular();
+		vx::Vec3 p2 = v.NormalisedPerpendicular();
+
+		//perp
+		CHECK_APPROX_EQ(vx::VxAbs(v.Dot(p1)), 0);
+		CHECK_APPROX_EQ(vx::VxAbs(v.Dot(p2)), 0);
+
+		//norm
+		CHECK(vx::VxAbs(p2.Length() - 1.0f) < vx::kEpsilon);
+
+		vx::Vec3 x_axis(1, 0, 0);
+		vx::Vec3 px = x_axis.NormalisedPerpendicular();
+		CHECK(vx::VxAbs(x_axis.Dot(px)) < vx::kEpsilon);
+		vx::Vec3 y_axis(0, 1, 0);
+		vx::Vec3 py = y_axis.NormalisedPerpendicular();
+		CHECK(vx::VxAbs(y_axis.Dot(py)) < vx::kEpsilon);
+
 	}
 }

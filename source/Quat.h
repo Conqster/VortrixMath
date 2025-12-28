@@ -52,6 +52,8 @@ namespace vx
 		VX_INLINE void Normalise();
 		VX_INLINE Quat Normalised() const;
 
+		VX_INLINE float Dot(const Quat& rhs) const { return Vec4::Dot(mValue, rhs.mValue); }
+
 		VX_INLINE bool IsUnitQuat(float tolerance = 1e-4f) const;
 
 		VX_INLINE float LengthSq() const { return mValue.LengthSq(); }
@@ -101,6 +103,8 @@ namespace vx
 		VX_INLINE Vec3 operator*(const Vec3& vec) const { return Rotate(vec); }
 
 		VX_INLINE Quat operator/(float rhs) const { return Quat(mValue / rhs); }
+
+		VX_INLINE Quat operator -()const { return Quat(-mValue); }
 
 		VX_INLINE friend std::ostream& operator<<(std::ostream& os, const Quat& q)
 		{

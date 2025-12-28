@@ -683,6 +683,50 @@ namespace vx
 		return *this;
 	}
 
+	inline VX_INLINE Vec3 Vec3::Perpendicular() const
+	{
+		if (VxAbs(X()) < VxAbs(Y()))
+			return Vec3(0.0f, -Z(), Y());
+		else
+			return Vec3(-Z(), 0.0f, X());
+	}
+
+	inline VX_INLINE Vec3 Vec3::NormalisedPerpendicular() const
+	{
+#ifdef VX_USE_SSE
+		if (VxAbs(X()) < VxAbs(Y()))
+		{
+			__m128 r = _mm_setr_ps(0.0f, -Z(), Y(), Y());
+			__m128 d = _mm_dp_ps(r, r, 0x7f);
+			__m128 safe_ep = _mm_max_ps(d, _mm_set_ps1(1e-6f));
+			r = _mm_div_ps(r, _mm_sqrt_ps(safe_ep));
+			return Vec3(r);
+		}
+		else
+		{
+			__m128 r = _mm_setr_ps(-Z(), 0.0f, X(), X());
+			__m128 d = _mm_dp_ps(r, r, 0x7f);
+			__m128 safe_ep = _mm_max_ps(d, _mm_set_ps1(1e-6f));
+			r = _mm_div_ps(r, _mm_sqrt_ps(safe_ep));
+			return Vec3(r);
+		}
+
+#else
+		//scalar optimisationm 
+		// one div then 2 mul (over 2 div) 
+		if (VxAbs(X()) < VxAbs(Y()))
+		{ 
+			float inv = 1.0f / VxSqrt(Y() * Y() + Z() * Z());
+			return Vec3(0.0f, -Z() * inv, Y() * inv);
+		}
+		else
+		{
+			float inv = 1.0f / VxSqrt(X() * X() + Z() * Z());
+			return Vec3(-Z() * inv, 0.0f, X() * inv);
+		}
+#endif // VX_USE_SSE
+	}
+
 	inline VX_INLINE Vec3 Vec3::Sqrt() const
 	{
 #ifdef VX_USE_SSE

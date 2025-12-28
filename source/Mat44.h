@@ -58,6 +58,12 @@ namespace vx
 	* - Direction vectors assume w = 0
 	* - Position vectors assume w = 1
 	* 
+	* 
+	*	NOTE:
+	*  Intentionally Used Mat44 as Mat33
+	* - Mat44 is 64 bytes and modern cache-line aligned 
+	* - Mat33 (48 bytes simded) straddles cache lines in array (would reacquire padding) 
+	* - Mat44 already provides all 3x3 rotation functionality 
 	*/
 	class alignas(16) Mat44
 	{
