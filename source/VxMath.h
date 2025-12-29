@@ -44,6 +44,12 @@ namespace vx
 			return _mm_xor_ps(v, SignMask<X, Y, Z, W>());
 		}
 
+		VX_INLINE __m128 Lerp(const __m128& a, const __m128& b, float t)
+		{
+			__m128 tt = _mm_set1_ps(t);
+			return _mm_add_ps(_mm_mul_ps(_mm_sub_ps(_mm_set1_ps(1.0f), tt), a), 
+				_mm_mul_ps(tt, b));
+		}
 		VX_INLINE __m128 Xor(const __m128& v, const __m128& mask)
 		{
 			return _mm_xor_ps(v, mask);
@@ -108,6 +114,11 @@ namespace vx
 		return std::abs(v);
 	}
 
+
+	VX_INLINE float VxLerp(float a, float b, float t)
+	{
+		return ((1.0f - t) * a) + t * b;
+	}
 
 
 	template<typename T>

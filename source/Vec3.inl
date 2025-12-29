@@ -1,5 +1,6 @@
 #include "Vec3.h"
 #include "Vec4.h"
+#include "Vec2.h"
 
 namespace vx
 {
@@ -725,6 +726,41 @@ namespace vx
 			return Vec3(-Z() * inv, 0.0f, X() * inv);
 		}
 #endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec3 Vec3::Project(const Vec3& rhs) const
+	{
+		return Dot(rhs) * rhs;
+	}
+
+	inline VX_INLINE Vec3 Vec3::Reject(const Vec3& rhs) const
+	{
+		return (Dot(rhs) * (rhs - *this));
+	}
+
+	inline VX_INLINE Vec3 Vec3::Reflect(const Vec3& nor) const
+	{
+		/// R = V - 2 * V.Dot(N) * N
+#ifdef VX_USE_SSE
+		//all lane
+		__m128 _2_d = _mm_mul_ps(_mm_set1_ps(2.0f), _mm_dp_ps(mValue, nor.mValue, 0x7f));
+		return _mm_mul_ps(_mm_sub_ps(mValue, _2_d), nor.mValue);
+#else
+		return *this - (2 * Dot(nor)) * nor;
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec3 Vec3::Lerp(const Vec3& lhs, const Vec3& rhs, float t)
+	{
+#ifdef VX_USE_SSE
+		return simd::Lerp(lhs.mValue, rhs.mValue, t);
+#else
+		return Vec3(
+			VxLerp(lhs.X(), rhs.X(), t),
+			VxLerp(lhs.Y(), rhs.Y(), t),
+			VxLerp(lhs.Z(), rhs.Z(), t));
+#endif // VX_USE_SSE
+
 	}
 
 	inline VX_INLINE Vec3 Vec3::Sqrt() const

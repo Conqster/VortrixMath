@@ -132,6 +132,15 @@ namespace vx
 		VX_INLINE Vec3 Perpendicular() const;
 		VX_INLINE Vec3 NormalisedPerpendicular() const;
 
+		/// Projects this vector onto rhs
+		/// assume rhs is of length 1
+		/// @returns (this · rhs) rhs
+		VX_INLINE Vec3 Project(const Vec3& rhs) const;
+		/// Reject (a,b) = a - Project(a, b)
+		VX_INLINE Vec3 Reject(const Vec3& onto) const;
+		VX_INLINE Vec3 Reflect(const Vec3& nor) const;
+		VX_INLINE static Vec3 Lerp(const Vec3& lhs, const Vec3& rhs, float t);
+
 		///Component wise Square root
 		VX_INLINE Vec3 Sqrt() const;
 		///Component wise Square root in place 
