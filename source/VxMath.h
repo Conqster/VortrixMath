@@ -39,7 +39,7 @@ namespace vx
 		}
 
 		template<int X, int Y, int Z, int W>
-		VX_INLINE constexpr __m128 FlipSign(const __m128 v)
+		VX_INLINE constexpr __m128 FlipSign(__m128 v)
 		{
 			return _mm_xor_ps(v, SignMask<X, Y, Z, W>());
 		}
@@ -57,7 +57,7 @@ namespace vx
 
 
 		template<int X, int Y, int Z, int W>
-		VX_INLINE __m128 Swizzle(const __m128& v)
+		VX_INLINE __m128 Swizzle(__m128 v)
 		{
 			VX_ASSERT(X >=0 && X <= 3, "X out of [0, 3] range");
 			VX_ASSERT(Y >=0 && Y <= 3, "X out of [0, 3] range");
@@ -67,7 +67,7 @@ namespace vx
 		}
 
 		template<int X, int Y, int Z, int W>
-		VX_INLINE __m128 Swizzle(const __m128& v0, const __m128& v1)
+		VX_INLINE __m128 Swizzle(__m128 v0, __m128 v1)
 		{
 			VX_ASSERT(X >= 0 && X <= 3, "X out of [0, 3] range");
 			VX_ASSERT(Y >= 0 && Y <= 3, "X out of [0, 3] range");
@@ -81,6 +81,8 @@ namespace vx
 	static constexpr float kVxPi = 3.14159265358979323846f;
 	static constexpr float kVxTau = 6.283185307179586f;
 	static constexpr float kEpsilon = 1e-6f;
+	static constexpr float kQuietNaNf = std::numeric_limits<float>::quiet_NaN();
+	static constexpr int kQuietNaNi = std::numeric_limits<int>::quiet_NaN();
 
 
 	template<typename T>
@@ -201,5 +203,10 @@ namespace vx
 	VX_INLINE double VxAcos(double v)
 	{
 		return std::acos(v);
+	}
+
+	VX_INLINE float VxAtan2(float y, float x)
+	{
+		return std::atan2(y, x);
 	}
 }

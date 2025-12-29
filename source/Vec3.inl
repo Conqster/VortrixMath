@@ -250,7 +250,7 @@ namespace vx
 #if VX_USE_SSE
 		return _mm_sub_ps(_mm_setzero_ps(), mValue);
 #else
-		return Vec4(-mFloats[0], -mFloats[1], -mFloats[2]);
+		return Vec3(-mFloats[0], -mFloats[1], -mFloats[2]);
 #endif // VX_USE_SSE
 	}
 
@@ -735,7 +735,7 @@ namespace vx
 
 	inline VX_INLINE Vec3 Vec3::Reject(const Vec3& rhs) const
 	{
-		return (Dot(rhs) * (rhs - *this));
+		return (*this - rhs * Dot(rhs));
 	}
 
 	inline VX_INLINE Vec3 Vec3::Reflect(const Vec3& nor) const

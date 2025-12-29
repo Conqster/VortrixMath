@@ -27,3 +27,8 @@ inline void CHECK_APPROX_EQ(const vx::Vec4& a, const vx::Vec4& b, float eps = 1e
 {
 	CHECK(a.IsApprox(b, eps * eps));
 }
+
+inline void CHECK_APPROX_EQ(const vx::Vec2& a, const vx::Vec2& b, float eps = 1e-6f)
+{
+	CHECK(a.IsApprox(b, eps * eps));
+}

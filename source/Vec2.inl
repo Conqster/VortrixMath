@@ -3,6 +3,10 @@
 
 namespace vx
 {
+	inline Vec2::Vec2(__m128 vec)
+	{
+		_mm_storel_pi(reinterpret_cast<__m64*>(this), vec);
+	}
 	inline VX_INLINE float& Vec2::operator[](uint32_t i)
 	{
 		VX_ASSERT(i < 2, "Trying to access invalid Vec2 index");
@@ -81,9 +85,7 @@ namespace vx
 	{
 #ifdef VX_USE_SSE
 		__m128 v = _mm_min_ps(lhs.SimdValue(), rhs.SimdValue());
-		Vec2 out;
-		_mm_storel_pi(reinterpret_cast<__m64*>(&out), v);
-		return out;
+		return Vec2(v);
 #else
 		return Vec2(std::min(lhs.x, rhs.x),
 			std::min(lhs.y, rhs.y));
@@ -118,26 +120,8 @@ namespace vx
 	inline VX_INLINE float Vec2::Dot(const Vec2& rhs) const
 	{
 #ifdef VX_USE_SSE
-		/// 0x71 -> 0111 0001 : op first 3 & store 1 (first)
-		/// 0xf1 -> 1111 0001 : op first 4 & store 1 (first)
-		/// 
-		/// 0x77 -> 0111 0111 : op first 3 & store 3 (first)
-		/// 0xff -> 1111 1111 : op first 4 & store 4 (first)
-		/// 
-		/// 0x7f -> 0111 1111 : op first 3 & store 4 (first)
-		/// 0x31 -> 0011 0001 : op first 2 & store 4 (first)
-		/// 
-		/// as 0111 0001 
-		/// high nibble 0111 [bit 4 - 7] (nibble 1 = 4bits, 0.5bytes) 
-		/// low nibble 0001	 [bit 0 - 3]
-		/// using with _mm_dp_ps 
-		/// high nibble defines, the bits to op on (multply its components) 
-		/// 0111 x, y, z, without w 
-		/// low nibble defines, the bits to store result
-		/// 0001 only x excluding y, z, and w
-
-		//dot product op first 3 & store 1 (x) then extract 1 (0:x)
-		return _mm_cvtss_f32(_mm_dp_ps(SimdValue(), rhs.SimdValue(), 0x31));
+		__m128 m = _mm_mul_ps(SimdValue(), rhs.SimdValue());
+		return _mm_cvtss_f32(_mm_dp_ps(m, m, 0x31));
 
 #else
 		float dot = 0.0f;
@@ -147,6 +131,25 @@ namespace vx
 #endif // VX_USE_SSE
 	}
 
+	inline VX_INLINE float Vec2::Angle(const Vec2& to) const
+	{
+		float len_sq = LengthSq() * to.LengthSq();
+		VX_ASSERT(len_sq > kEpsilon, "");
+
+		float r = Dot(to) / VxSqrt(len_sq);
+		r = VxClamp(r, -1.0f, 1.0f);
+		return VxAcos(r);
+	}
+
+
+	inline VX_INLINE float Vec2::SignedAngle(const Vec2& to) const
+	{
+		//cross 
+		//atan2(VxWy - VyWx, VxWx+VyWy)
+		float cross = x * to.y - y * to.x;
+		float dot = x * to.x + y * to.y;
+		return VxAtan2(cross, dot);
+	}
 
 	inline VX_INLINE float Vec2::LengthSq() const
 	{
@@ -186,22 +189,21 @@ namespace vx
 	inline VX_INLINE Vec2& Vec2::Normalise()
 	{
 #ifdef VX_USE_SSE
-		/// 0x3f -> 0011 1111 : op first 2 & store 4 (first)
-		///         0zyx dddd 
+		///// 0x3f -> 0011 1111 : op first 2 & store 4 (first)
+		/////         0zyx dddd 
 		__m128 v = SimdValue();
 		__m128 dot = _mm_dp_ps(v, v, 0x3f);
 		__m128 safe_ep = _mm_max_ps(dot, _mm_set_ps1(1e-6f));
 		v = _mm_div_ps(v, _mm_sqrt_ps(safe_ep));
-
-		_mm_storel_pi(reinterpret_cast<__m64*>(this), v);
+		Store(v);
 #else
 		float length_sq = 0.0f;
-		for (int i = 0; i < 3; ++i)
+		for (int i = 0; i < 2; ++i)
 			length_sq += (mFloats[i] * mFloats[i]);
 		if (length_sq > 1e-6f)
 		{
 			const float inv = 1.0f / std::sqrt(length_sq);
-			for (int i = 0; i < 3; ++i)
+			for (int i = 0; i < 2; ++i)
 				mFloats[i] *= inv;
 		}
 #endif // VX_USE_SSE
@@ -230,39 +232,31 @@ namespace vx
 		return Vec2(-y, x);
 	}
 
-	inline VX_INLINE Vec2 Vec2::Project(const Vec2& rhs) const
+	inline VX_INLINE Vec2 Vec2::Project(const Vec2& nor) const
 	{
 #ifdef VX_USE_SSE
-		/// 0x3f -> 0011 1111 : op first 2 & store 4 (first)
-		///         0zyx dddd 
+		/// 0x33 -> 0011 0011 : op first 2 & store 4 (first)
+		///         00yx 00dd 
 		__m128 v = SimdValue();
-		__m128 n = rhs.SimdValue();
-		__m128 dot = _mm_mul_ps(v, n);
-		dot = _mm_hadd_ps(dot, dot);
+		__m128 n = nor.SimdValue();
+		__m128 dot = _mm_dp_ps(v, n, 0x33);
 		v = _mm_mul_ps(dot, n);
-		Vec2 out;
-		_mm_storel_pi(reinterpret_cast<__m64*>(&out), v);
-		return out;
+		return Vec2(v);
 #else
-		return Dot(rhs) * rhs;
+		return Dot(nor) * nor;
 #endif // VX_USE_SSE
 	}
 
 	inline VX_INLINE Vec2 Vec2::Reject(const Vec2& rhs) const
 	{
 #ifdef VX_USE_SSE
-		/// 0x3f -> 0011 1111 : op first 2 & store 4 (first)
-		///         0zyx dddd 
 		__m128 v = SimdValue();
 		__m128 n = rhs.SimdValue();
-		__m128 dot = _mm_mul_ps(v, n);
-		dot = _mm_hadd_ps(dot, dot);
-		v = _mm_mul_ps(dot, _mm_sub_ps(v, n));
-		Vec2 out;
-		_mm_storel_pi(reinterpret_cast<__m64*>(&out), v);
-		return out;
+		__m128 dot = _mm_dp_ps(v, n, 0x33);
+		v = _mm_sub_ps(v, _mm_mul_ps(n, dot));
+		return Vec2(v);
 #else
-		return (Dot(rhs) * (rhs - *this));
+		return (*this - rhs * Dot(rhs));
 #endif // VX_USE_SSE
 	}
 
@@ -273,30 +267,24 @@ namespace vx
 		__m128 v = SimdValue();
 		__m128 n = nor.SimdValue();
 		//all lane
-		__m128 d = _mm_mul_ps(v, n);
-		d = _mm_hadd_ps(d, d);
+		__m128 d = _mm_dp_ps(v, n, 0x33);
 		__m128 _2_d = _mm_mul_ps(_mm_set1_ps(2.0f), d);
-		//__m128 r = _mm_mul_ps(_mm_sub_ps(v, _2_d), n);
-		__m128 r = _mm_sub_ps(n, _mm_sub_ps(v, _2_d));
-		Vec2 out;
-		_mm_storel_pi(reinterpret_cast<__m64*>(&out), r);
-		return out;
+		__m128 r = _mm_sub_ps(v, _mm_mul_ps(_2_d, n));
+		return Vec2(r);
 #else
 		return *this - (2 * Dot(nor)) * nor;
 #endif // VX_USE_SSE
 	}
 
-	inline VX_INLINE Vec2 Vec2::Lerp(const Vec2& lhs, const Vec2& rhs, float t)
+	inline VX_INLINE Vec2 Vec2::Lerp(const Vec2& from, const Vec2& to, float t)
 	{
 #ifdef VX_USE_SSE
-		__m128 r = simd::Lerp(lhs.SimdValue(), rhs.SimdValue(), t);
-		Vec2 out;
-		_mm_storel_pi(reinterpret_cast<__m64*>(&out), r);
-		return out;
+		__m128 r = simd::Lerp(from.SimdValue(), to.SimdValue(), t);
+		return Vec2(r);
 #else
 		return Vec2(
-			VxLerp(lhs.x, rhs.x, t),
-			VxLerp(lhs.y, rhs.y, t));
+			VxLerp(from.x, to.x, t),
+			VxLerp(from.y, to.y, t));
 #endif // VX_USE_SSE
 	}
 
@@ -311,6 +299,137 @@ namespace vx
 		x = VxSqrt(x);
 		y = VxSqrt(y);
 		return *this;
+	}
+
+	inline VX_INLINE Vec2 Vec2::operator+(const Vec2& rhs) const
+	{
+#ifdef VX_USE_SSE
+		return Vec2(_mm_add_ps(SimdValue(), rhs.SimdValue()));
+#else
+		return Vec2(x + rhs.x, y + rhs.y);
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec2& Vec2::operator+=(const Vec2& rhs)
+	{
+#ifdef VX_USE_SSE
+		Store(_mm_add_ps(SimdValue(), rhs.SimdValue()));
+#else
+		x += rhs.x;
+		y += rhs.y;
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec2 Vec2::operator-(const Vec2& rhs) const
+	{
+#ifdef VX_USE_SSE
+		return Vec2(_mm_sub_ps(SimdValue(), rhs.SimdValue()));
+#else
+		return Vec2(x - rhs.x, y - rhs.y);
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec2& Vec2::operator-=(const Vec2& rhs)
+	{
+#ifdef VX_USE_SSE
+		Store(_mm_sub_ps(SimdValue(), rhs.SimdValue()));
+#else
+		x -= rhs.x;
+		y -= rhs.y;
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec2 Vec2::operator*(float scalar) const
+	{
+#ifdef VX_USE_SSE
+		return Vec2(_mm_mul_ps(SimdValue(), _mm_set1_ps(scalar)));
+#else
+		return Vec2(x * scalar, y * scalar);
+#endif // VX_USE_SSE
+	}
+
+	VX_INLINE Vec2 vx::operator*(const float lhs, const Vec2& rhs)
+	{
+		return rhs * lhs;
+	}
+
+	inline VX_INLINE Vec2& Vec2::operator*=(float scalar)
+	{
+#ifdef VX_USE_SSE
+		Store(_mm_mul_ps(SimdValue(), _mm_set1_ps(scalar)));
+#else
+		x *= scalar;
+		y *= scalar;
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec2 Vec2::operator/(float scalar) const
+	{
+#ifdef VX_USE_SSE
+		return Vec2(_mm_div_ps(SimdValue(), _mm_set1_ps(scalar)));
+#else
+		float inv = 1 / scalar;
+		return Vec2(x * inv, y * inv);
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec2& Vec2::operator/=(float scalar)
+	{
+#ifdef VX_USE_SSE
+		Store(_mm_div_ps(SimdValue(), _mm_set1_ps(scalar)));
+#else
+		float inv = 1 / scalar;
+		x *= inv;
+		y *= inv;
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec2 Vec2::operator-() const
+	{
+		return Vec2(-x, -y);
+	}
+
+	inline VX_INLINE Vec2 Vec2::operator*(const Vec2& rhs) const
+	{
+#ifdef VX_USE_SSE
+		//broad cast or load scalar
+		return Vec2(_mm_mul_ps(SimdValue(), rhs.SimdValue()));
+#else
+		return Vec2(x * rhs.x, y * rhs.y);
+#endif // VX_USE_SSE
+	}
+
+
+	inline VX_INLINE Vec2& Vec2::operator*=(const Vec2& rhs)
+	{
+#ifdef VX_USE_SSE
+		//broad cast or load scalar
+		Store(_mm_mul_ps(SimdValue(), rhs.SimdValue()));
+#else
+		x *= rhs.x;
+		y *= rhs.y;
+#endif // VX_USE_SSE
+
+		return *this;
+	}
+
+	inline VX_INLINE Vec2 Vec2::operator/(const Vec2& rhs) const
+	{
+#ifdef VX_USE_SSE
+		return Vec2(_mm_div_ps(SimdValue(), rhs.SimdValue()));
+#else
+		return Vec2(x * rhs.x, y * rhs.y);
+#endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Vec2& Vec2::operator/=(const Vec2& rhs)
+	{
+#ifdef VX_USE_SSE
+		Store(_mm_div_ps(SimdValue(), rhs.SimdValue()));
+#else
+		x /= rhs.x;
+		y /= rhs.y;
+#endif // VX_USE_SSE
 	}
 
 	inline VX_INLINE __m128 Vec2::SimdValue() const

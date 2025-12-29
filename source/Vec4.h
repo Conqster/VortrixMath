@@ -57,6 +57,10 @@ namespace vx
 		VX_INLINE void ToZero();
 		VX_INLINE static Vec4 Zero();
 		VX_INLINE static Vec4 One() { return Vec4(1.0f); }
+		VX_INLINE static Vec4 UnitX() { return Vec4(1.0f, 0.0f, 0.0f, 0.0f); }
+		VX_INLINE static Vec4 UnitY() { return Vec4(0.0f, 1.0f, 0.0f, 0.0f); }
+		VX_INLINE static Vec4 UnitZ() { return Vec4(0.0f, 0.0f, 1.0f, 0.0f); }
+		VX_INLINE static Vec4 UnitW() { return Vec4(0.0f, 0.0f, 0.0f, 1.0f); }
 
 		VX_INLINE Vec4 Abs() const;
 		VX_INLINE Vec4 Sign() const;
