@@ -8,23 +8,24 @@
 namespace vx
 {
 	/*
-	* Quat
+	* Quat q
 	* Quaternion class for representing 3D rotations.
 	* 
-	* Quaternion are 4D vectors used to hold 
+	* Quaternion are 4D vectors that encode 
 	* 3 degrees of rotational freedom (DOF) in 3D space.
-	* if normalised (length = 1), 
-	* they repsent vaild rotation frame without ginbal lock.
+	* 
+	* When normalised (|q| = 1), a quaternion repsent vaild rotation.
 	* 
 	* Layout: 
 	* [x, y, z, w]
-	* - [x, y, z]: Imaginary components (rotation axis) 
-	* - [w]: Real component (rotation magnitude)
+	* - [x, y, z]: Imaginary vector (rotation axis * sin(angle/2)) 
+	* - [w]: Real scalar (cos(angle/2))
 	* 
-	* Voltrix use right-handed coordinate system and column-major matrix layout.
-	* Quaternion multiplcation is non-commutative: q1 * q2 != q2 * q1.
+	* Conventions:
+	*	- Right-handed coordinate syste,
+	*	- Quat -> Mat44 (Column-major)
 	* 
-	* Vec4 as generic container
+	* Internally stored as a Vec4.
 	*/
 	class alignas(16) Quat
 	{
@@ -34,76 +35,127 @@ namespace vx
 		Quat(const Vec3& imaginary, float w) : mValue(imaginary, w){}
 		Quat(const Vec4& component) : mValue(component){}
 
+		/// @return imaginary x component value
 		VX_INLINE float X() const { return mValue.X(); }
+		/// @return imaginary y component value
 		VX_INLINE float Y() const { return mValue.Y(); }
+		/// @return imaginary z component value
 		VX_INLINE float Z() const { return mValue.Z(); }
+		/// @return real w component value
 		VX_INLINE float W() const { return mValue.W(); }
 
+		/// @return imaginary (vector) part
 		VX_INLINE Vec3 Imaginary() const { return Vec3(mValue); }
+		/// @return full quaternion as Vec4 (x, y, z, w)
 		VX_INLINE Vec4 XYZW() const { return mValue; }
 
+		/// Identity quaternion (no rotation)
+		/// @return [0, 0, 0, 1]
 		static VX_INLINE Quat Identity() { return Quat(0.0f, 0.0f, 0.0f, 1.0f); }
+		/// Create quaternion from axis-angle representation
+		/// @param axis (assume normalised rotation axis).
+		/// @param angle Rotation angle in radians.
+		/// @return quat from axis-angle
 		static VX_INLINE Quat FromAxisAngle(const Vec3& axis, float angle);
-
+		/// Set quaternion from axis-angle.
+		/// @param axis (assume normalised rotation axis).
+		/// @param angle Rotation angle in radians.
 		VX_INLINE void SetAxisAngle(const Vec3& axis, float angle);
+		/// Extract axis-angle representation
+		/// Assume this quat q, is Unit quaternion (Normalised, |q| = 1) .
+		/// @param o_axis Output rotation axis (normalise)
+		/// @param o_angle Output rotation angle in radians
 		VX_INLINE void GetAxisAngle(Vec3& o_axis, float& o_angle);
 
-
+		/// Normlise this vector in place
 		VX_INLINE void Normalise();
+		/// Normlise this quaternion
+		/// @return normalise copy of this 
+		/// of length 1.
 		VX_INLINE Quat Normalised() const;
 
+		/// Dot product 
 		VX_INLINE float Dot(const Quat& rhs) const { return Vec4::Dot(mValue, rhs.mValue); }
-
+		/// Check if quaternion is unit-length (normalised, |q| = 1)
 		VX_INLINE bool IsUnitQuat(float tolerance = 1e-4f) const;
 
+		//@return the squared length (magnitude) of the quaternion
 		VX_INLINE float LengthSq() const { return mValue.LengthSq(); }
+		///@return the length (magnitude) of the quaternion
 		VX_INLINE float Length() const { return mValue.Length(); }
 
+		/// Conjugate quaternion
+		/// @return Negated imaginary part of quarternion
 		VX_INLINE Quat Conjugated() const { return Quat(mValue.FlipSign<-1, -1, -1, 1>()); }
+		/// Inverse quaternion
+		/// for unit quaternion, inverse == conjugate
 		VX_INLINE Quat Inversed() const;
 		/// Rotates a vector by this unit quaternion
-		/// Quat * Vec3 
-		/// v' = q * v * q^-1
 		/// 
-		/// Rodrigues formula :
+		/// Compute:
+		///		v' = q * v * q^-1
+		/// 
+		/// Optimised Rodrigues formula :
 		/// v'= v + 2 * w * (q.xyz x v) + 2 * (q.xyz x (q.xyz x v))
 		/// v' = v' = v + wt + (q.xyz x t)
 		///		t = 2(q.xyz x v)
-		/// @param vector representing angular velocity
-		/// @note in physics orientation update
+		/// 
+		/// Quaternion is assume (|q| = 1)
+		/// @param vec Vector to rotate
 		VX_INLINE Vec3 Rotate(const Vec3& vec) const;
-		/// Rotate a vector from world space
-		/// into quat local space
-		/// Quat * Vec3 
-		/// v' = q^-1 * v * q
-		/// 
-		/// Rodrigues formula :
-		/// v'= v + 2 * w * (q.xyz x v) + 2 * (q.xyz x (q.xyz x v))
-		/// v' = v' = v + wt + (q.xyz x t)
-		///		t = 2(q.xyz x v)
+		/// Rotate vector by inverse quaternion
+		/// Quaternion is assume (|q| = 1)
+		/// Equivalent to transforming into local space
 		VX_INLINE Vec3 InverseRotate(const Vec3& vec) const;
-
+		/// Rotate vector using full quaternion multiplication
+		/// Quaternion is assume (|q| = 1)
+		/// Slower but mathematically explicit
 		VX_INLINE Vec3 RotateSlow(const Vec3& vec) const;
+		/// Inverse rotation using full quaternion multiplucation
+		/// Quaternion is assume (|q| = 1)
 		VX_INLINE Vec3 InverseRotateSlow(const Vec3& vec) const;
-
+		/// Rotate world X axis by quaternion
+		/// Quaternion is assume (|q| = 1)
 		VX_INLINE Vec3 RotateAxisX() const;
+		/// Rotate world Y axis by quaternion
+		/// Quaternion is assume (|q| = 1)
 		VX_INLINE Vec3 RotateAxisY() const;
+		/// Rotate world Z axis by quaternion
+		/// Quaternion is assume (|q| = 1)
 		VX_INLINE Vec3 RotateAxisZ() const;
-
+		/// Rotate world X axis and apply scale
+		/// Quaternion is assume (|q| = 1)
 		VX_INLINE Vec3 RotateScaledAxisX(float scale) const;
+		/// Rotate world Y axis and apply scale
+		/// Quaternion is assume (|q| = 1)
 		VX_INLINE Vec3 RotateScaledAxisY(float scale) const;
+		/// Rotate world Z axis and apply scale
+		/// Quaternion is assume (|q| = 1)
 		VX_INLINE Vec3 RotateScaledAxisZ(float scale) const;
-
+		/// Rotate and scale all basis axes
+		///
+		/// Produces scaled orientation axes suitable (rotation/&tranform matrix)
+		/// Quaternion is assume (|q| = 1)
+		/// 
+		/// @param scale Per-axis scale
+		/// @param out_x Output X axis
+		/// @param out_y Output Y axis
+		/// @param out_z Output Z axis
 		VX_INLINE void RotateScaledAxes(const Vec3& scale, Vec3& out_x, Vec3& out_y, Vec3& out_z);
+		/// Convert quaternion to rotation matrix
+		/// Quaternion is assume (|q| = 1)
+		/// @return 4x4 column-major rotation matrix
 		VX_INLINE Mat44 GetRotationMat44();
 
+		/// Quaternion multipluication (componsition)
 		VX_INLINE Quat operator*(const Quat& rhs) const;
+		/// Quaternion multipluication (in place)
 		VX_INLINE Quat operator*=(const Quat& rhs);
-
+		/// Rotate vector (same as Rotate(const Vec3))
 		VX_INLINE Vec3 operator*(const Vec3& vec) const { return Rotate(vec); }
-
+		/// Scalar division
 		VX_INLINE Quat operator/(float rhs) const { return Quat(mValue / rhs); }
-
+		/// Negate all component
 		VX_INLINE Quat operator -()const { return Quat(-mValue); }
 
 		VX_INLINE friend std::ostream& operator<<(std::ostream& os, const Quat& q)

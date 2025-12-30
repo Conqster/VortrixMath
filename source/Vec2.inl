@@ -301,6 +301,14 @@ namespace vx
 		return *this;
 	}
 
+	template<int X, int Y>
+	inline VX_INLINE [[nodiscard]] Vec2 Vec2::Swizzle() const
+	{
+		VX_ASSERT(X >= 0 && X <= 3, "X out of [0, 3] range");
+		VX_ASSERT(Y >= 0 && Y <= 3, "X out of [0, 3] range");
+		return Vec2(mFloats[X], mFloats[Y]);
+	}
+
 	inline VX_INLINE Vec2 Vec2::operator+(const Vec2& rhs) const
 	{
 #ifdef VX_USE_SSE

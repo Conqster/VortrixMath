@@ -11,25 +11,20 @@ namespace vx
 	* 4x4 Column-major matrix for affine and general tranformation
 	* 
 	* Usage:
-	* - 4x4 operations (general transforms)
-	* - 4x3 operations (affine transforms)
+	* - affine transforms (rotation, translation, scale)
 	* - 3x3 operations (3x3 upper left of matrix) (rotation / scaling)
 	* 
-	* Commonly Used for:
-	* - Rotation
-	* - Translation
-	* - Transform composition in rigidbody dynamics.
-	* 
 	* Coordinate system:
-	* - Right-handed
+	* - Right-handed coordniate system
 	* - Column-major storage
 	* - Column vectors
+	* - Vectors are transformed as: v' = M * v
 	* 
 	* Mathematical layout (row x column):
 	* 
 	* | R00 R01 R02 Tx  | | 0 4 8 12 | 
 	* | R10 R11 R12 Ty  | | 1 5 9 13 | 
-	* | R20 R21 R23 Tz  | | 2 6 10 14 |
+	* | R20 R21 R22 Tz  | | 2 6 10 14 |
 	* |  0   0   0   1  | | 3 7 11 15 |
 	* 
 	* Memory layout column: 
@@ -38,25 +33,27 @@ namespace vx
 	*	
 	* - Rij: Rotation/scale components
 	* - Tx, Ty, Tz: Translation components
-	* 
+	* - Bottom row is [0, 0,0, 1] for affine matrices
 	* 
 	* Basis representation:
-	* - Columns represent basis vectors and translation
+	* - Columns 0-2 represent basis vectors (X, Y, Z)
+	* - Column 3 reprensent atranslation
 	* 
-	* |A.x  B.x  C.x  T.x|
-	* |A.y  B.y  C.y  T.y|
-	* |A.z  B.z  C.z  T.z|
+	* |X.x  Y.x  Z.x  T.x|
+	* |X.y  Y.y  Z.y  T.y|
+	* |X.z  Y.z  Z.z  T.z|
 	* | 0    0    0    1 |
 	* 
 	* 
-	* Vector transform:
+	* Vector sematics:
+	*  - Direction vectors assume w = 0 (no translation)
+	*  - Position vectors assume w = 1 (translation applied)
+	*
 	* 
-	* v' = M*v
-	* 
-	* Affine special cases:
-	* - Multiply3x3(v): ignores translation
-	* - Direction vectors assume w = 0
-	* - Position vectors assume w = 1
+	* Affine helpers:
+	* - Multiply3x3(): ignores translation
+	* - TransformDirection(): direction vectors
+	* - Transform(): position vectors
 	* 
 	* 
 	*	NOTE:
@@ -73,56 +70,48 @@ namespace vx
 		explicit VX_INLINE Mat44(const float diagonal);
 		VX_INLINE Mat44(const Vec4& col0, const Vec4& col1, const Vec4& col2, const Vec4& col3);
 		VX_INLINE Mat44(const Vec4& col0, const Vec4& col1, const Vec4& col2);
-
-
+		
+		/// | 1 0 0 0 |
+		/// | 0 1 0 0 |
+		/// | 0 0 1 0 |
+		/// | 0 0 0 1 |
+		/// @return identity matrix
 		static VX_INLINE Mat44 Identity();
-		/// dummy matrix that stores
-		/// matrix with value in their order in memory
+		/// debug / utility matrix containing linear indices
+		/// Values stored in memeory order (column-major)
 		/// | 0 4 8 12 |
 		/// | 1 5 9 13 |
 		/// | 2 6 10 14 |
 		/// | 3 7 11 15 | 
 		static VX_INLINE Mat44 Dummy();
-		/// matrix that scales uniformly
+		/// Build translation matrix
 		/// | 1 0 0 t.x |
 		/// | 0 1 0 t.y |
 		/// | 0 0 1 t.z |
 		/// | 0 0 0 1 |
 		static VX_INLINE Mat44 Translation(const Vec3& v);
-		/// matrix that scales uniformly
+		/// Build uniform scale matrix
 		/// | s 0 0 0 |
 		/// | 0 s 0 0 |
 		/// | 0 0 s 0 |
 		/// | 0 0 0 1 |
 		static VX_INLINE Mat44 Scale(float scale);
-		/// matrix that scales (produces a matrix with (inV, 1) on its diagonal)
+		/// Build non-uniform scale matrix
 		/// | s.x  0   0  0 |
 		/// |  0  s.y  0  0 |
 		/// |  0   0  s.z 0 |
 		/// |  0   0   0  1 |
 		static VX_INLINE Mat44 Scale(const Vec3& scale);
-		/// rotation around X axis PITCH in radian
-		/// | R/S   R   R  Tx |
-		/// |  R   cos -sin Ty |
-		/// |  R   sin  cos Tz |
-		/// |  0    0    0   1 |
-		/// 
+		/// Rotation about X axis (pitch), radians
 		static VX_INLINE Mat44 RotationX(float angle);
-		/// rotation around Z axis YAW in radian
-		/// |  cos  R  sin  Tx |
-		/// |   R  R/S  R   Ty |
-		/// | -sin  R  cos Tz |
-		/// |   0   0   0   1 |
-		/// 
+		/// Rotation about Y axis (yaw), radians
 		static VX_INLINE Mat44 RotationY(float angle);
-		/// rotation around Z axis Roll in radian
-		/// | cos -sin   R  Tx |
-		/// | sin  cos   R  Ty |
-		/// |  R    R   R/S Tz |
-		/// |  0    0    0   1 |
-		/// 
+		/// Rotation about Z axis (row), radians
 		static VX_INLINE Mat44 RotationZ(float angle);
+		/// Build matrix from orthonormal basis vectors
+		/// Columns represent X, Y, Z axes; translation is zero
 		static VX_INLINE Mat44 Basis(const Vec3& x, const Vec3& y, const Vec3& z);
+		/// Build matrix from basis vectors and translation
 		static VX_INLINE Mat44 BasisTranslation(const Vec3& x, const Vec3& y, const Vec3& z, const Vec3& t);
 		
 		/// Builds a 4x4 rotation matrix (R - 3x3) from a unit quaternion 
