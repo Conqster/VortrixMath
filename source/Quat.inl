@@ -1,5 +1,6 @@
 #include "Quat.h"
 #include "Mat44.h"
+#include "SimdUtil.h"
 
 namespace vx
 {

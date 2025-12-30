@@ -122,7 +122,7 @@ TEST_SUITE("Vec2 Tests")
 		vx::Vec2 zero(0.0f);
 		CHECK(!zero.IsNormalised());
 
-		vx::Vec2 nan(vx::kQuietNaNf, 1.0f);
+		vx::Vec2 nan(vx::kQuietNaN, 1.0f);
 		CHECK(nan.IsNaN());
 	}
 

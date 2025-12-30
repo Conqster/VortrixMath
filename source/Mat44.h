@@ -114,33 +114,36 @@ namespace vx
 		/// Build matrix from basis vectors and translation
 		static VX_INLINE Mat44 BasisTranslation(const Vec3& x, const Vec3& y, const Vec3& z, const Vec3& t);
 		
-		/// Builds a 4x4 rotation matrix (R - 3x3) from a unit quaternion 
+		/// Builds rotation matrix from a unit quaternion
 		/// Translation is zero, bottom [0, 0, 0, 1]
-		/// | R 0 |
-		/// | 0 1 |
 		static VX_INLINE Mat44 Rotation(const Quat& q);
-		/// Builds a 4x4 Translation rotation matrix (R - 3x3) from a unit quaternion 
-		/// Translation is zero, bottom [0, 0, 0, 1]
-		/// | R t |
-		/// | 0 1 |
+		/// Build rotation + translation matrix from unit quaternion
 		static VX_INLINE Mat44 RotationTranslation(const Quat& q, const Vec3& t);
 
-		//Accessor
+		/// Accessor
+		/// Access matrix element (row, column)
 		VX_INLINE float& operator()(int row, int column);
+		/// @return Read matrix element (row, column)
 		VX_INLINE float operator()(int row, int column) const;
 
+		/// Access column vector by index
+		/// @param i Index [0..3]
+		/// @return column vector i
 		VX_INLINE Vec4 GetColumn(int i) const;
+		/// Access column vector xyz part by index
+		/// @param i Index [0..3]
+		/// @return xyz part of column vector i
 		VX_INLINE Vec3 GetColumn3(int i) const;
 		VX_INLINE void SetColumn(int i, const Vec4& rhs);
 		VX_INLINE void SetColumn3(int i, const Vec3& rhs);
 
-		/// @return matrix column 0
+		/// @return X basis vector (column 0)
 		VX_INLINE Vec3 GetAxisX() const { return mCol[0]; }
-		/// @return matrix column 1
+		/// @return Y basis vector (column 1)
 		VX_INLINE Vec3 GetAxisY() const { return mCol[1]; }
-		/// @return matrix column 2
+		/// @return Z basis vector (column 2)
 		VX_INLINE Vec3 GetAxisZ() const { return mCol[2]; }
-		/// @return matrix column 3
+		/// @return translation vector (column 3)
 		VX_INLINE Vec3 GetTranslation() const { return mCol[3]; }
 
 		VX_INLINE void SetAxisX(const Vec3& v, const float w = 0.0f) { mCol[0] = Vec4(v, w);}
@@ -158,18 +161,34 @@ namespace vx
 		VX_INLINE bool operator == (const Mat44& rhs) const;
 		VX_INLINE bool operator != (const Mat44& rhs) const { return !(*this == rhs); }
 
+		/// @return determinant of upper-left 3x3 matrix
 		VX_INLINE float Determinant3x3() const;
+		/// @return basis handness (+1 right-handed, 0 degarded, -1 left-handed)
 		VX_INLINE int GetBasisHandness() const;
+		/// @return true, if matrix is affine (bottom row = [0 0 0 1])
 		VX_INLINE bool IsAffine() const;
+		/// @return true if upper 3x3 is affine-compatible
 		VX_INLINE bool IsAffine3x3() const;
+		/// Validates that teh upper 3x3 matrix forms an orthonormal basis
+		/// column must have unit length and be perpendicular to the others.
+		/// @param tolerance Maximum allowed deviation from ideal orthonormality
+		/// @return true, if the basis is a pure rotation(no scale, no shear).
 		VX_INLINE bool IsOrthonormal(float tolerance = 1e-4f) const;
+		/// @return transpose of upper 3x3 matrix
 		VX_INLINE Mat44 Transposed3x3() const;
+		/// @return full transpose matrix
 		VX_INLINE Mat44 Transposed() const;
+		/// @return inverse upper 3x3 matrix
 		VX_INLINE Mat44 Inverse3x3() const;
+		/// Invert affine matrix (rotation + translation only)
+		/// Undefined behaviour, if matrix contains scale or shear
 		VX_INLINE Mat44 InverseAffine() const;
 
+		/// Multiply vector by upper 3x3 matrix
 		VX_INLINE Vec3 Multiply3x3(const Vec3& rhs) const;
+		/// Multiply vector by transposed upper 3x3 matrix
 		VX_INLINE Vec3 Multiply3x3Transposed(const Vec3& rhs) const;
+		/// Multiply vector by affine matrix
 		VX_INLINE Vec3 MultiplyAffine(const Vec3& rhs) const;
 		VX_INLINE Mat44 Multiply3x3(const Mat44& rhs) const;
 		VX_INLINE Mat44 Multiply3x3LeftTransposed(const Mat44& rhs) const;
@@ -190,52 +209,41 @@ namespace vx
 		VX_INLINE Vec3 Transform(const Vec3& vec)const;
 		VX_INLINE static Vec3 Transform(const Mat44& matrix, const Vec3& translate);
 		
-		/// Tranforms a position vector by inverse of this matrix.
-		/// Assume pure rotation and translation
+		/// Tranforms a position vector by inverse of this matrix (assume affine).
 		VX_INLINE Vec3 TransformInverse(const Vec3& vector) const;
+		/// Tranforms a position vector by inverse of matrix (assume affine).
 		VX_INLINE static Vec3 TransformInverse(const Mat44& matrix, const Vec3& translate);
 		
-		/// Transform a direction vector by this matrix (rotated direction)
-		/// ignore translation
+		/// Transform a direction vector by this matrix (ignore translation)
 		VX_INLINE Vec3 TransformDirection(const Vec3& vec) const;
-		/// Transform a direction vector by the inverse of this matrix (inversely rotated direction).
+		/// Transform a direction vector by the inverse of this matrix.
 		/// Assue pure rotation (no scale/shear).
 		VX_INLINE Vec3 TransformInverseDirection(const Vec3& vec) const;
 
-		/// Sets the rotation part of matrix from a unit quaternion 
+		/// Sets the rotation part of matrix from unit quaternion 
 		/// Translation preserved, bottom [0, 0, 0, 1]
-		/// | R t |
-		/// | 0 1 |
 		VX_INLINE void SetRotation(const Quat& q);
-		/// Set both rotation and translation components from a quaternion and translation
-		/// @param q Quaternion representing rotation
-		/// @param pos Translation Vector
+		/// Set both rotation and translation.
 		VX_INLINE void SetRotationAndTranslation(const Quat& q, const Vec3& pos);
 
 		VX_INLINE Mat44 GetRotationMat33() const;
 		/// Extract the rotation component of matrix as quartenion 
-		/// matrix must represnet pure rotation (ortho nor 3x3)
-		/// UB, if matix contain scale or shear
+		/// matrix must contain pure rotation (no scale/shear)
 		VX_INLINE Quat GetRotationQuat() const;
 
-		/// post scale matrix == pre scale 
-		/// for affine transform, pre/post are equivalenrt
-		/// preventing full matrix mutltiplication 
-		/// with focus on scale components 
-		/// | Sx R  R  Tx |
-		/// | R  Sy R  Ty |
-		/// | R  R  Sz Tz |
-		/// | 0  0  0   1 |
-		/// 
-		/// return result Sx * s.x, Sy * s.y, Sz * s.z
+		/// Pre-scale affine matrix (scale axes)
 		VX_INLINE Mat44 PreScaled(const Vec3& scale);
+		/// Post-scale affine matrix
 		VX_INLINE Mat44 PostScaled(const Vec3& scale);
 
-		//util
-		/// Decomposing matrix into Mat44 (containing rotation & tranlsation) 
-		/// out scale (vec3)
+		/// Decomposing matrix into rotation+translation matrix and vector scale
+		/// Uses Gram-Schmidt orthonormalisation
 		/// see https://en.wikipedia.org/wiki/Gram%E2%80%93Schmidt_process
+		/// @param o_scale Output non-uniform scale
+		/// @return Mat44(rotation+translation) 
+		/// @return Vec3 o_scale 
 		VX_INLINE Mat44 Decompose(Vec3& o_scale) const;
+		/// Orthonormalise upper 3x3 basis vectors
 		VX_INLINE void MakeOrthonormal();
 
 		friend std::ostream& operator<<(std::ostream& os, const Mat44& m);

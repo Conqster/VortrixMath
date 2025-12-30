@@ -1,5 +1,6 @@
 #include "Vec2.h"
-
+#include "SimdUtil.h"
+#include "ScalarMath.h"
 
 namespace vx
 {

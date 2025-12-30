@@ -222,5 +222,12 @@ TEST_SUITE("Vec4 Tests")
 		CHECK_APPROX_EQ(xyzw.XYZZ(), vx::Vec4(x, y, z, z));
 		CHECK_APPROX_EQ(xyzw.XYZ0(), vx::Vec4(x, y, z, 0.0f));
 		CHECK_APPROX_EQ(xyzw.XYZ1(), vx::Vec4(x, y, z, 1.0f));
+
+		///Get Lane 
+		vx::Vec4 t = vx::Vec4(1, 2, 3, 4);
+		CHECK(vx::Vec4::GetLane(t, 0) == t[0]);
+		CHECK(vx::Vec4::GetLane(t, 1) == t[1]);
+		CHECK(vx::Vec4::GetLane(t, 2) == t[2]);
+		CHECK(vx::Vec4::GetLane(t, 3) == t[3]);
 	}
 }

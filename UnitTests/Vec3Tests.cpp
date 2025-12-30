@@ -296,5 +296,12 @@ TEST_SUITE("Vec3 Tests")
 		vx::Vec3 py = y_axis.NormalisedPerpendicular();
 		CHECK(vx::VxAbs(y_axis.Dot(py)) < vx::kEpsilon);
 
+
+		///Get Lane 
+		vx::Vec3 t = vx::Vec3(1, 2, 3);
+		CHECK(vx::Vec3::GetLane(t, 0) == t[0]);
+		CHECK(vx::Vec3::GetLane(t, 1) == t[1]);
+		CHECK(vx::Vec3::GetLane(t, 2) == t[2]);
+
 	}
 }
