@@ -4,7 +4,7 @@
 
 ///Program enforce right hand
 #define VX_RENDER_CLIP_SPACE_ZO_BIT (1 << 0)
-#define VX_RENDER_CLIP_SPACE_NO_BIT (1 << 0)
+#define VX_RENDER_CLIP_SPACE_NO_BIT (1 << 1)
 
 #define VX_RENDER_CLIP_SPACE_ZO VX_RENDER_CLIP_SPACE_ZO_BIT
 #define VX_RENDER_CLIP_SPACE_NO VX_RENDER_CLIP_SPACE_NO_BIT
@@ -24,7 +24,7 @@ namespace vx
 	{
 		const Vec3 fwd = (target - pos).Normalised();
 		const Vec3 rt = Vec3::Cross(fwd, up);
-		const Vec3 u = Vec3::Cross(rt, up);
+		const Vec3 u = Vec3::Cross(rt, fwd);
 
 		Vec4 x = Vec4(rt.X(), u.X(), -fwd.X(), 0.0f);
 		Vec4 y = Vec4(rt.Y(), u.Y(), -fwd.Y(), 0.0f);
@@ -79,7 +79,7 @@ namespace vx
 		float h = 1.0f / VxTan(0.5f * fov);
 		float w = h / aspect;
 		// [-1, 1]
-		float neg_diff_ratio = -1.0f / (zNear - zFar);
+		float neg_diff_ratio = -1.0f / (zFar - zNear);
 
 		return Mat44(
 			Vec4(w, 0.0f, 0.0f, 0.0f),
@@ -123,7 +123,7 @@ namespace vx
 			Vec4(2.0f * inv_rt_diff, 0.0f, 0.0f, 0.0f),
 			Vec4(0.0f, 2.0f * inv_tb_diff, 0.0f, 0.0f),
 			Vec4(0.0f, 0.0f, inv_fn_diff, 0.0f),
-			Vec4(-(right+left) * inv_rt_diff, -(top+bottom)*inv_tb_diff, -zNear * inv_fn_diff, 1.0f));
+			Vec4(-(right + left) * inv_rt_diff, -(top + bottom) * inv_tb_diff, -zNear * inv_fn_diff, 1.0f));
 	}
 	
 

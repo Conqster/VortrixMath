@@ -1086,6 +1086,24 @@ namespace vx
 		return result;
 	}
 
+	inline VX_INLINE Vec4 Mat44::Multiply(const Vec4& rhs) const
+	{
+#ifdef VX_USE_SSE
+
+		__m128 v = rhs.Value();
+		__m128 r = _mm_mul_ps(mCol[0].Value(), _mm_shuffle_ps(v, v, _MM_SHUFFLE(0, 0, 0, 0)));
+		r = _mm_add_ps(r, _mm_mul_ps(mCol[1].Value(), _mm_shuffle_ps(v, v, _MM_SHUFFLE(1, 1, 1, 1))));
+		r = _mm_add_ps(r, _mm_mul_ps(mCol[2].Value(), _mm_shuffle_ps(v, v, _MM_SHUFFLE(2, 2, 2, 2))));
+		r = _mm_add_ps(r, _mm_mul_ps(mCol[3].Value(), _mm_shuffle_ps(v, v, _MM_SHUFFLE(3, 3, 3, 3))));
+		return Vec4(r);
+#else
+		return Vec4(mFloats[0] * rhs[0] + mFloats[4] * rhs[1] + mFloats[8] * rhs[2] + mFloats[12] * rhs[3],
+					mFloats[1] * rhs[0] + mFloats[5] * rhs[1] + mFloats[9] * rhs[2] + mFloats[13] * rhs[3],
+					mFloats[2] * rhs[0] + mFloats[6] * rhs[1] + mFloats[10] * rhs[2] + mFloats[14] * rhs[3],
+					mFloats[3] * rhs[0] + mFloats[7] * rhs[1] + mFloats[11] * rhs[2] + mFloats[15] * rhs[3]);
+#endif // VX_USE_SSE
+	}
+
 	inline VX_INLINE Mat44 Mat44::MultiplyAffine(const Mat44& rhs) const
 	{
 		VX_ASSERT(IsAffine() && rhs.IsAffine(), "one of the matrices, is not Affine");

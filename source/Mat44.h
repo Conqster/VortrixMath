@@ -194,6 +194,7 @@ namespace vx
 		VX_INLINE Mat44 Multiply3x3LeftTransposed(const Mat44& rhs) const;
 		VX_INLINE Mat44 Multiply3x3RightTransposed(const Mat44& rhs) const;
 		VX_INLINE Mat44 Multiply(const Mat44& rhs) const;
+		VX_INLINE Vec4 Multiply(const Vec4& rhs) const;
 		VX_INLINE Mat44 MultiplyAffine(const Mat44& rhs) const;
 
 		VX_INLINE Mat44 Add(const Mat44& rhs) const;

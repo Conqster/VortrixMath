@@ -2,6 +2,7 @@
 
 //#define DOCTEST_CONFIG_NO_POSTIX_SIGNALS
 #include "doctest.h"
+#include "Mat44.h"
 #include "Vec4.h"
 #include "Vec3.h"
 
@@ -31,4 +32,12 @@ inline void CHECK_APPROX_EQ(const vx::Vec4& a, const vx::Vec4& b, float eps = 1e
 inline void CHECK_APPROX_EQ(const vx::Vec2& a, const vx::Vec2& b, float eps = 1e-6f)
 {
 	CHECK(a.IsApprox(b, eps * eps));
+}
+
+
+
+inline void CHECK_APPROX_EQ(const vx::Mat44& a, const vx::Mat44& b, float eps = 1e-6f)
+{
+	for(int i = 0; i < 4; ++i)
+		CHECK(a.GetColumn(i).IsApprox(b.GetColumn(i), eps * eps));
 }
