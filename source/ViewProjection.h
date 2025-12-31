@@ -12,6 +12,12 @@
 
 namespace vx
 {
+	/// Default, this system is right-handed
+	/// positive X-axis points right, Vec3(1.0f, 0.0f, 0.0f).
+	/// positive Y-axis points up, Vec3(0.0f, 1.0f, 0.0f).
+	/// positive Z-axis point "out" of screen towards viewer.
+	/// i.e scene (forward) is -Vec3::Forward(), Vec3(0.0f, 0.0f, -1.0f).
+
 
 	/// Build a right handed look at view matrix
 	/// 
@@ -53,13 +59,12 @@ namespace vx
 	{
 		float h = 1.0f / VxTan(0.5f * fov);
 		float w = h / aspect;
-		float range = zFar / (zNear - zFar);
 
 		return Mat44(
 			Vec4(w, 0.0f, 0.0f, 0.0f),
 			Vec4(0.0f, h, 0.0f, 0.0f),
-			Vec4(0.0f, 0.0f, range, -1.0f),
-			Vec4(0.0f, 0.0f, range * zNear, 0.0f));
+			Vec4(0.0f, 0.0f, zFar / (zNear - zFar), -1.0f),
+			Vec4(0.0f, 0.0f, -(zFar * zNear) / (zFar - zNear), 0.0f));
 	}
 
 	/// Create a right handed perspective-view

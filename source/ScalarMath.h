@@ -124,7 +124,7 @@ namespace vx
 	/// @param degrees.
 	/// @return Angle in radians.
 	template<typename T>
-	inline constexpr T DegToRad(T degrees)
+	VX_INLINE T DegToRad(T degrees)
 	{
 		return degrees * static_cast<T>(kVxPi) / static_cast<T>(180.0f);
 	}
@@ -133,7 +133,7 @@ namespace vx
 	/// @param radians.
 	/// @return Angle in degrees
 	template<typename T>
-	inline constexpr T RadToDeg(T radians)
+	VX_INLINE T RadToDeg(T radians)
 	{
 		return radians * static_cast<T>(180.0f) / static_cast<T>(kVxPi);
 	}
