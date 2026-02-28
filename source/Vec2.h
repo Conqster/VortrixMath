@@ -72,6 +72,15 @@ namespace vx
 		/// Largest component value
 		VX_INLINE float MaxComponent() const;
 
+		/// Index of smallest component
+		/// @return 0 for x. 
+		/// @return 1 for y.
+		VX_INLINE Axis MinAxis() const;
+		/// Index of largest component
+		/// @return 0 for x. 
+		/// @return 1 for y.
+		VX_INLINE Axis MaxAxis() const;
+
 		/// @return a vector from the smallest component of lhs & rhs vectors
 		VX_INLINE static Vec2 Min(const Vec2& lhs, const Vec2& rhs);
 		/// @return a vector from the largest component of lhs & rhs vectors
@@ -144,8 +153,11 @@ namespace vx
 		VX_INLINE Vec2& SqrtAssign();
 
 		/// swizzle (shhuffle) components
-		template<int X, int Y>
+		template<Axis Swizzle_X, Axis Swizzle_Y>
 		VX_INLINE [[nodiscard]] Vec2 Swizzle() const;
+
+		template<int X, int Y>
+		VX_INLINE [[nodiscard]] static Vec2 Swizzle(const vx::Vec2& a, const vx::Vec2& b);
 
 		/// Add 2 vector float component wise
 		VX_INLINE Vec2 operator+(const Vec2& rhs) const;

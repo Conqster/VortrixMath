@@ -1,5 +1,10 @@
 #include "TestCommon.h"
 
+
+/// Notes
+/// write unit test for Swizzle
+
+
 TEST_SUITE("Vec2 Tests")
 {
 	TEST_CASE("Test Vec2 construct")
@@ -124,8 +129,36 @@ TEST_SUITE("Vec2 Tests")
 
 		vx::Vec2 nan(vx::kQuietNaN, 1.0f);
 		CHECK(nan.IsNaN());
+
+
+		vx::Vec2 v0(0.0f, 1.0f);
+		CHECK(v0.Swizzle<vx::Axis::Y, vx::Axis::X>()  == vx::Vec2(1.0f, 0.0f));
+		CHECK(v0.Swizzle<vx::Axis::Y, vx::Axis::Y>()  == vx::Vec2(1.0f));
+		CHECK(v0.Swizzle<vx::Axis::X, vx::Axis::X>()  == vx::Vec2(0.0f));
+
+		v0 = vx::Vec2(0.0f, 1.0f);
+		vx::Vec2 v1(2.0f, 3.0f);
+		CHECK(vx::Vec2::Swizzle<0, 2>(v0, v1) == vx::Vec2::Swizzle<2, 0>(v1, v0));
+		CHECK(vx::Vec2::Swizzle<3, 0>(v0, v1) == vx::Vec2(3.0f, 0.0f));
+		CHECK(vx::Vec2::Swizzle<2, 2>(v0, v1) == vx::Vec2(2.0f));
+		CHECK(vx::Vec2::Swizzle<3, 1>(v0, v1) == vx::Vec2(3.0f, 1.0f));
 	}
 
+
+	TEST_CASE("Max Axis")
+	{
+		//max axis
+		//on x
+		CHECK(vx::Vec2(200, 2).MaxAxis() == vx::Axis::X);
+		//on y
+		CHECK(vx::Vec2(20, 200).MaxAxis() == vx::Axis::Y);
+
+		//min axis
+		//on x
+		CHECK(vx::Vec2(2, 20).MinAxis() == vx::Axis::X);
+		//on y
+		CHECK(vx::Vec2(20, 2).MinAxis() == vx::Axis::Y);
+	}
 
 	TEST_CASE("Lerp")
 	{

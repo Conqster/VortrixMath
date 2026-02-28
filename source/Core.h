@@ -19,11 +19,25 @@
 		 } } while (0)
 
 
+using uint8 = std::uint8_t;
+using uint32 = std::uint32_t;
+
+
+
+
 //forward declare
 namespace vx {
+
+	enum class Axis : std::uint8_t;
+
+	struct Float3;
+
+	class Vec2;
 	class Vec3;
 	class Vec4;
-	class Mat44;
+
 	class Quat;
+
+	class Mat44;
 }
 

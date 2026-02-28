@@ -102,19 +102,19 @@ TEST_SUITE("Vec3 Tests")
 
 		//max axis
 		//on x
-		CHECK(vx::Vec3(200, 2, 4).MaxAxis() == 0);
+		CHECK(vx::Vec3(200, 2, 4).MaxAxis() == vx::Axis::X);
 		//on y
-		CHECK(vx::Vec3(20, 200, 4).MaxAxis() == 1);
+		CHECK(vx::Vec3(20, 200, 4).MaxAxis() == vx::Axis::Y);
 		//on z
-		CHECK(vx::Vec3(20, 2, 400).MaxAxis() == 2);
+		CHECK(vx::Vec3(20, 2, 400).MaxAxis() == vx::Axis::Z);
 
 		//min axis
 		//on x
-		CHECK(vx::Vec3(2, 20, 4).MinAxis() == 0);
+		CHECK(vx::Vec3(2, 20, 4).MinAxis() == vx::Axis::X);
 		//on y
-		CHECK(vx::Vec3(20, 2, 400).MinAxis() == 1);
+		CHECK(vx::Vec3(20, 2, 400).MinAxis() == vx::Axis::Y);
 		//on z
-		CHECK(vx::Vec3(20, 200, 4).MinAxis() == 2);
+		CHECK(vx::Vec3(20, 200, 4).MinAxis() == vx::Axis::Z);
 
 
 		vx::Vec3 a = vx::Vec3(3.0f, 0.0f, 4.0f);

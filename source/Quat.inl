@@ -42,6 +42,42 @@ namespace vx
 		else
 			o_axis = (1.0f / VxSqrt(s_sq)) * Imaginary();
 	}
+	inline VX_INLINE Quat Quat::FromEulerAngle(float pitch, float yaw, float roll)
+	{
+		float half_pitch = 0.5f * pitch;
+		float half_yaw = 0.5f * yaw;
+		float half_roll = 0.5f * roll;
+
+		float cp = VxCos(half_pitch);
+		float sp = VxSin(half_pitch);
+		float cy = VxCos(half_yaw);
+		float sy = VxSin(half_yaw);
+		float cr = VxCos(half_roll);
+		float sr = VxSin(half_roll);
+
+		Quat q(sp * cy * cr + cp * sy * sr, //x
+			cp * sy * cr - sp * cy * sr, //y
+			cp * cy * sr + sp * sy * cr, //z
+			cp * cy * cr - sp * sy * sr); //w
+		q.Normalise();
+		return q;
+	}
+	inline VX_INLINE Vec3 Quat::GetAxisAngle() const
+	{
+		float sinp = 2.0f * W() * X() + Y() * Z();
+		float cosp = 1.0f - 2.0f * (X() * X() + Y() * Y());
+		float pitch = VxAtan2(sinp, cosp);
+
+		float siny = 2.0f * (W() * Y() - Z() * X());
+		siny = VxClamp(siny, -1.0f, 1.0f);
+		float yaw = VxAsin(siny);
+
+		float sinr = 2.0f * (W() * Z() + X() * Y());
+		float cosr = 1.0f - 2.0f * (Y() * Y() + Z() * Z());
+		float roll = VxAtan2(sinr, cosr);
+
+		return Vec3(pitch, yaw, roll);
+	}
 	VX_INLINE void Quat::Normalise()
 	{
 		float len = mValue.Length();
@@ -267,7 +303,6 @@ namespace vx
 
 	inline VX_INLINE void Quat::RotateScaledAxes(const Vec3& scale, Vec3& out_x, Vec3& out_y, Vec3& out_z)
 	{
-
 		////| [1 - 2(yy - zz) xy + wz        xz - wy] | T
 		////| [xy - wz        1-2(xx - zz)]  yz + wx] |
 		////| [xz + wy        yz - wx        1 - xx - yy] |
@@ -290,7 +325,7 @@ namespace vx
 
 
 		/// diag [yy + zz, xx + zz, xx + yy, 0]
-		__m128 diag = _mm_add_ps(simd::Swizzle<1, 0, 0, 3>(xx_yy_zz_ww), simd::Swizzle<2, 2, 1, 3>(xx_yy_zz_ww));
+		__m128 diag = _mm_add_ps(simd::Swizzle<simd::Y, simd::X, simd::X, simd::W>(xx_yy_zz_ww), simd::Swizzle<kAxisZ, kAxisZ, kAxisY, kAxisW>(xx_yy_zz_ww));
 		/// [1-(yy + zz), 1-(xx + zz), 1-(xx + yy)]
 		diag = _mm_sub_ps(_mm_set1_ps(1.0f), diag);
 
@@ -319,27 +354,31 @@ namespace vx
 		/// 
 		/// 01_20_12: a + b
 		/// 10_02_21: a - b
-	
-		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<0, 0, 1, 1>(t_xyz), simd::Swizzle<1, 2, 2, 2>(q));
-		//__m128 w_zyx = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(t_xyz), simd::Swizzle<2, 1, 0, 3>(q));
-		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(q), simd::Swizzle<2, 1, 0, 3>(t_xyz));
+
+		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<kAxisX, kAxisX, kAxisY, kAxisY>(t_xyz), simd::Swizzle<kAxisY, kAxisZ, kAxisZ, kAxisZ>(q));
+		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<kAxisW, kAxisW, kAxisW, kAxisW>(q), simd::Swizzle<kAxisZ, kAxisY, kAxisX, kAxisW>(t_xyz));
 
 		/// require write 
 		/// d 01 02
 		/// 10 d 12 
 		/// 20 21 d
 		__m128 r20_01_12 = _mm_add_ps(xy_xz_yz, w_zyx); //01_20_12
-		r20_01_12 = simd::Swizzle<1, 0, 2, 2>(r20_01_12);
+		//r20_01_12 = simd::Swizzle<1, 0, 2, 2>(r20_01_12);
+		r20_01_12 = simd::Swizzle<kAxisY, kAxisX, kAxisZ, kAxisZ>(r20_01_12);
 		__m128 r10_21_02 = _mm_sub_ps(xy_xz_yz, w_zyx); //10_02_21
-		r10_21_02 = simd::Swizzle<0, 2, 1, 1>(r10_21_02);
+		//r10_21_02 = simd::Swizzle<0, 2, 1, 1>(r10_21_02);
+		r10_21_02 = simd::Swizzle<kAxisX, kAxisZ, kAxisY, kAxisY>(r10_21_02);
 
 		__m128 s = scale.Value();
 		__m128 r = _mm_blend_ps(_mm_blend_ps(diag, r20_01_12, 0b1110), r10_21_02, 0b1100);
-		out_x = Vec3(_mm_mul_ps(r, simd::Swizzle<0, 0, 0, 0>(s)));
+		//out_x = Vec3(_mm_mul_ps(r, simd::Swizzle<0, 0, 0, 0>(s)));
+		out_x = Vec3(_mm_mul_ps(r, simd::Swizzle<kAxisX, kAxisX, kAxisX, kAxisX>(s)));
 		r = _mm_blend_ps(_mm_blend_ps(r10_21_02, diag, 0b1110), r20_01_12, 0b1100);
-		out_y = Vec3(_mm_mul_ps(r, simd::Swizzle<1, 1, 1, 1>(s)));
+		//out_y = Vec3(_mm_mul_ps(r, simd::Swizzle<1, 1, 1, 1>(s)));
+		out_y = Vec3(_mm_mul_ps(r, simd::Swizzle<kAxisY, kAxisY, kAxisY, kAxisY>(s)));
 		r = _mm_blend_ps(_mm_blend_ps(r20_01_12, r10_21_02, 0b1110), diag, 0b1100);
-		out_z = Vec3(_mm_mul_ps(r, simd::Swizzle<2, 2, 2, 2>(s)));
+		//out_z = Vec3(_mm_mul_ps(r, simd::Swizzle<2, 2, 2, 2>(s)));
+		out_z = Vec3(_mm_mul_ps(r, simd::Swizzle<kAxisZ, kAxisZ, kAxisZ, kAxisZ>(s)));
 
 #else
 		float tx = X() + X();
@@ -367,7 +406,6 @@ namespace vx
 
 	inline VX_INLINE Mat44 Quat::GetRotationMat44()
 	{
-
 		////| [1 - 2(yy - zz) xy + wz        xz - wy] | T
 		////| [xy - wz        1-2(xx - zz)]  yz + wx] |
 		////| [xz + wy        yz - wx        1 - xx - yy] |
@@ -391,7 +429,7 @@ namespace vx
 
 
 		/// diag [yy + zz, xx + zz, xx + yy, 0]
-		__m128 diag = _mm_add_ps(simd::Swizzle<1, 0, 0, 3>(xx_yy_zz_ww), simd::Swizzle<2, 2, 1, 3>(xx_yy_zz_ww));
+		__m128 diag = _mm_add_ps(simd::Swizzle<kAxisY, kAxisX, kAxisX, kAxisW>(xx_yy_zz_ww), simd::Swizzle<kAxisZ, kAxisZ, kAxisY, kAxisW>(xx_yy_zz_ww));
 		/// [1-(yy + zz), 1-(xx + zz), 1-(xx + yy)]
 		diag = _mm_sub_ps(_mm_set1_ps(1.0f), diag);
 
@@ -421,27 +459,27 @@ namespace vx
 		/// 01_20_12: a + b
 		/// 10_02_21: a - b
 
-		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<0, 0, 1, 1>(t_xyz), simd::Swizzle<1, 2, 2, 2>(q));
-		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(q), simd::Swizzle<2, 1, 0, 3>(t_xyz));
+		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<kAxisX, kAxisX, kAxisY, kAxisY>(t_xyz), simd::Swizzle<kAxisY, kAxisZ, kAxisZ, kAxisZ>(q));
+		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<kAxisW, kAxisW, kAxisW, kAxisW>(q), simd::Swizzle<kAxisZ, kAxisY, kAxisX, kAxisW>(t_xyz));
 
 		/// require write 
 		/// d 01 02
 		/// 10 d 12 
 		/// 20 21 d
 		__m128 r20_01_12 = _mm_add_ps(xy_xz_yz, w_zyx); //01_20_12
-		r20_01_12 = simd::Swizzle<1, 0, 2, 2>(r20_01_12);
+		r20_01_12 = simd::Swizzle<kAxisY, kAxisX, kAxisZ, kAxisZ>(r20_01_12);
 		__m128 r10_21_02 = _mm_sub_ps(xy_xz_yz, w_zyx); //10_02_21
-		r10_21_02 = simd::Swizzle<0, 2, 1, 1>(r10_21_02);
+		r10_21_02 = simd::Swizzle<kAxisX, kAxisZ, kAxisY, kAxisY>(r10_21_02);
 
 		__m128 xC = _mm_blend_ps(_mm_blend_ps(diag, r20_01_12, 0b1110), r10_21_02, 0b1100);
 		__m128 yC = _mm_blend_ps(_mm_blend_ps(r10_21_02, diag, 0b1110), r20_01_12, 0b1100);
 		__m128 zC = _mm_blend_ps(_mm_blend_ps(r20_01_12, r10_21_02, 0b1110), diag, 0b1100);
 		//ensure affine bottom & translate 0, 0,0 1
 		__m128 mask = simd::LaneMask<1, 1, 1, 0>();
-	
+
 		return Mat44(Vec4(_mm_and_ps(xC, mask)),
-					 Vec4(_mm_and_ps(yC, mask)),
-					 Vec4(_mm_and_ps(zC, mask)));
+			Vec4(_mm_and_ps(yC, mask)),
+			Vec4(_mm_and_ps(zC, mask)));
 
 #else
 
@@ -482,8 +520,8 @@ namespace vx
 		__m128 q2 = rhs.mValue.Value();
 
 		//w
-		__m128 w1 = simd::Swizzle<3, 3, 3, 3>(q1);
-		__m128 w2 = simd::Swizzle<3, 3, 3, 3>(q2);
+		__m128 w1 = simd::Swizzle<kAxisW, kAxisW, kAxisW, kAxisW>(q1);
+		__m128 w2 = simd::Swizzle<kAxisW, kAxisW, kAxisW, kAxisW>(q2);
 
 		__m128 v = _mm_add_ps(
 			_mm_mul_ps(w1, q2),
@@ -491,10 +529,10 @@ namespace vx
 		);
 
 		//cross v1, v2
-		__m128 v1_yzx = simd::Swizzle<1, 2, 0, 3>(q1);
-		__m128 v2_zxy = simd::Swizzle<2, 0, 1, 3>(q2);
-		__m128 v1_zxy = simd::Swizzle<2, 0, 1, 3>(q1);
-		__m128 v2_yzx = simd::Swizzle<1, 2, 0, 3>(q2);
+		__m128 v1_yzx = simd::Swizzle<kAxisY, kAxisZ, kAxisX, kAxisW>(q1);
+		__m128 v2_zxy = simd::Swizzle<kAxisZ, kAxisX, kAxisY, kAxisW>(q2);
+		__m128 v1_zxy = simd::Swizzle<kAxisZ, kAxisX, kAxisY, kAxisW>(q1);
+		__m128 v2_yzx = simd::Swizzle<kAxisY, kAxisZ, kAxisX, kAxisW>(q2);
 
 		__m128 cross = _mm_sub_ps(
 			_mm_mul_ps(v1_yzx, v2_zxy),

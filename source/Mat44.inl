@@ -148,7 +148,7 @@ namespace vx
 
 
 		/// diag [yy + zz, xx + zz, xx + yy, 0]
-		__m128 diag = _mm_add_ps(simd::Swizzle<1, 0, 0, 3>(xx_yy_zz_ww), simd::Swizzle<2, 2, 1, 3>(xx_yy_zz_ww));
+		__m128 diag = _mm_add_ps(simd::Swizzle<kAxisY, kAxisX, kAxisX, kAxisW>(xx_yy_zz_ww), simd::Swizzle<kAxisZ, kAxisZ, kAxisY, kAxisW>(xx_yy_zz_ww));
 		/// [1-(yy + zz), 1-(xx + zz), 1-(xx + yy)]
 		diag = _mm_sub_ps(_mm_set1_ps(1.0f), diag);
 
@@ -178,17 +178,17 @@ namespace vx
 		/// 01_20_12: a + b
 		/// 10_02_21: a - b
 
-		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<0, 0, 1, 1>(t_xyz), simd::Swizzle<1, 2, 2, 2>(_q));
-		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(_q), simd::Swizzle<2, 1, 0, 3>(t_xyz));
+		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<kAxisX, kAxisX, kAxisY, kAxisY>(t_xyz), simd::Swizzle<kAxisY, kAxisZ, kAxisZ, kAxisZ>(_q));
+		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<kAxisW, kAxisW, kAxisW, kAxisW>(_q), simd::Swizzle<kAxisZ, kAxisY, kAxisX, kAxisW>(t_xyz));
 
 		/// require write 
 		/// d 01 02
 		/// 10 d 12 
 		/// 20 21 d
 		__m128 r20_01_12 = _mm_add_ps(xy_xz_yz, w_zyx); //01_20_12
-		r20_01_12 = simd::Swizzle<1, 0, 2, 2>(r20_01_12);
+		r20_01_12 = simd::Swizzle<kAxisY, kAxisX, kAxisZ, kAxisZ>(r20_01_12);
 		__m128 r10_21_02 = _mm_sub_ps(xy_xz_yz, w_zyx); //10_02_21
-		r10_21_02 = simd::Swizzle<0, 2, 1, 1>(r10_21_02);
+		r10_21_02 = simd::Swizzle<kAxisX, kAxisZ, kAxisY, kAxisY>(r10_21_02);
 
 		__m128 xC = _mm_blend_ps(_mm_blend_ps(diag, r20_01_12, 0b1110), r10_21_02, 0b1100);
 		__m128 yC = _mm_blend_ps(_mm_blend_ps(r10_21_02, diag, 0b1110), r20_01_12, 0b1100);
@@ -253,7 +253,7 @@ namespace vx
 
 
 		/// diag [yy + zz, xx + zz, xx + yy, 0]
-		__m128 diag = _mm_add_ps(simd::Swizzle<1, 0, 0, 3>(xx_yy_zz_ww), simd::Swizzle<2, 2, 1, 3>(xx_yy_zz_ww));
+		__m128 diag = _mm_add_ps(simd::Swizzle<kAxisY, kAxisX, kAxisX, kAxisW>(xx_yy_zz_ww), simd::Swizzle<kAxisZ, kAxisZ, kAxisY, kAxisW>(xx_yy_zz_ww));
 		/// [1-(yy + zz), 1-(xx + zz), 1-(xx + yy)]
 		diag = _mm_sub_ps(_mm_set1_ps(1.0f), diag);
 
@@ -283,17 +283,18 @@ namespace vx
 		/// 01_20_12: a + b
 		/// 10_02_21: a - b
 
-		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<0, 0, 1, 1>(t_xyz), simd::Swizzle<1, 2, 2, 2>(_q));
-		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(_q), simd::Swizzle<2, 1, 0, 3>(t_xyz));
+		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<kAxisX, kAxisX, kAxisY, kAxisY>(t_xyz), simd::Swizzle<kAxisY, kAxisZ, kAxisZ, kAxisZ>(_q));
+		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<kAxisW, kAxisW, kAxisW, kAxisW>(_q), simd::Swizzle<kAxisZ, kAxisY, kAxisX, kAxisW>(t_xyz));
 
 		/// require write 
 		/// d 01 02
 		/// 10 d 12 
 		/// 20 21 d
 		__m128 r20_01_12 = _mm_add_ps(xy_xz_yz, w_zyx); //01_20_12
-		r20_01_12 = simd::Swizzle<1, 0, 2, 2>(r20_01_12);
+		r20_01_12 = simd::Swizzle<kAxisY, kAxisX, kAxisZ, kAxisZ>(r20_01_12);
 		__m128 r10_21_02 = _mm_sub_ps(xy_xz_yz, w_zyx); //10_02_21
-		r10_21_02 = simd::Swizzle<0, 2, 1, 1>(r10_21_02);
+		r10_21_02 = simd::Swizzle<kAxisX, kAxisZ, kAxisY, kAxisY>(r10_21_02);
+
 
 		__m128 xC = _mm_blend_ps(_mm_blend_ps(diag, r20_01_12, 0b1110), r10_21_02, 0b1100);
 		__m128 yC = _mm_blend_ps(_mm_blend_ps(r10_21_02, diag, 0b1110), r20_01_12, 0b1100);
@@ -737,6 +738,140 @@ namespace vx
 
 		return result;
 #endif // VX_USE_SSE
+	}
+
+	inline VX_INLINE Mat44 Mat44::Inverse() const
+	{
+		Mat44 result;
+
+		const float* m = mFloats;
+		float* inv = result.mFloats;
+
+		inv[0] = m[5] * m[10] * m[15] -
+			m[5] * m[11] * m[14] -
+			m[9] * m[6] * m[15] +
+			m[9] * m[7] * m[14] +
+			m[13] * m[6] * m[11] -
+			m[13] * m[7] * m[10];
+
+		inv[4] = -m[4] * m[10] * m[15] +
+			m[4] * m[11] * m[14] +
+			m[8] * m[6] * m[15] -
+			m[8] * m[7] * m[14] -
+			m[12] * m[6] * m[11] +
+			m[12] * m[7] * m[10];
+
+		inv[8] = m[4] * m[9] * m[15] -
+			m[4] * m[11] * m[13] -
+			m[8] * m[5] * m[15] +
+			m[8] * m[7] * m[13] +
+			m[12] * m[5] * m[11] -
+			m[12] * m[7] * m[9];
+
+		inv[12] = -m[4] * m[9] * m[14] +
+			m[4] * m[10] * m[13] +
+			m[8] * m[5] * m[14] -
+			m[8] * m[6] * m[13] -
+			m[12] * m[5] * m[10] +
+			m[12] * m[6] * m[9];
+
+		inv[1] = -m[1] * m[10] * m[15] +
+			m[1] * m[11] * m[14] +
+			m[9] * m[2] * m[15] -
+			m[9] * m[3] * m[14] -
+			m[13] * m[2] * m[11] +
+			m[13] * m[3] * m[10];
+
+		inv[5] = m[0] * m[10] * m[15] -
+			m[0] * m[11] * m[14] -
+			m[8] * m[2] * m[15] +
+			m[8] * m[3] * m[14] +
+			m[12] * m[2] * m[11] -
+			m[12] * m[3] * m[10];
+
+		inv[9] = -m[0] * m[9] * m[15] +
+			m[0] * m[11] * m[13] +
+			m[8] * m[1] * m[15] -
+			m[8] * m[3] * m[13] -
+			m[12] * m[1] * m[11] +
+			m[12] * m[3] * m[9];
+
+		inv[13] = m[0] * m[9] * m[14] -
+			m[0] * m[10] * m[13] -
+			m[8] * m[1] * m[14] +
+			m[8] * m[2] * m[13] +
+			m[12] * m[1] * m[10] -
+			m[12] * m[2] * m[9];
+
+		inv[2] = m[1] * m[6] * m[15] -
+			m[1] * m[7] * m[14] -
+			m[5] * m[2] * m[15] +
+			m[5] * m[3] * m[14] +
+			m[13] * m[2] * m[7] -
+			m[13] * m[3] * m[6];
+
+		inv[6] = -m[0] * m[6] * m[15] +
+			m[0] * m[7] * m[14] +
+			m[4] * m[2] * m[15] -
+			m[4] * m[3] * m[14] -
+			m[12] * m[2] * m[7] +
+			m[12] * m[3] * m[6];
+
+		inv[10] = m[0] * m[5] * m[15] -
+			m[0] * m[7] * m[13] -
+			m[4] * m[1] * m[15] +
+			m[4] * m[3] * m[13] +
+			m[12] * m[1] * m[7] -
+			m[12] * m[3] * m[5];
+
+		inv[14] = -m[0] * m[5] * m[14] +
+			m[0] * m[6] * m[13] +
+			m[4] * m[1] * m[14] -
+			m[4] * m[2] * m[13] -
+			m[12] * m[1] * m[6] +
+			m[12] * m[2] * m[5];
+
+		inv[3] = -m[1] * m[6] * m[11] +
+			m[1] * m[7] * m[10] +
+			m[5] * m[2] * m[11] -
+			m[5] * m[3] * m[10] -
+			m[9] * m[2] * m[7] +
+			m[9] * m[3] * m[6];
+
+		inv[7] = m[0] * m[6] * m[11] -
+			m[0] * m[7] * m[10] -
+			m[4] * m[2] * m[11] +
+			m[4] * m[3] * m[10] +
+			m[8] * m[2] * m[7] -
+			m[8] * m[3] * m[6];
+
+		inv[11] = -m[0] * m[5] * m[11] +
+			m[0] * m[7] * m[9] +
+			m[4] * m[1] * m[11] -
+			m[4] * m[3] * m[9] -
+			m[8] * m[1] * m[7] +
+			m[8] * m[3] * m[5];
+
+		inv[15] = m[0] * m[5] * m[10] -
+			m[0] * m[6] * m[9] -
+			m[4] * m[1] * m[10] +
+			m[4] * m[2] * m[9] +
+			m[8] * m[1] * m[6] -
+			m[8] * m[2] * m[5];
+
+		float det =
+			m[0] * inv[0] +
+			m[1] * inv[4] +
+			m[2] * inv[8] +
+			m[3] * inv[12];
+
+		VX_ASSERT(VxAbs(det) > kEpsilon, "Matrix is singular");
+
+		float invDet = 1.0f / det;
+		for (int i = 0; i < 16; ++i)
+			inv[i] *= invDet;
+
+		return result;
 	}
 
 	inline VX_INLINE Vec3 Mat44::Multiply3x3(const Vec3& rhs) const
@@ -1308,7 +1443,7 @@ namespace vx
 
 
 		/// diag [yy + zz, xx + zz, xx + yy, 0]
-		__m128 diag = _mm_add_ps(simd::Swizzle<1, 0, 0, 3>(xx_yy_zz_ww), simd::Swizzle<2, 2, 1, 3>(xx_yy_zz_ww));
+		__m128 diag = _mm_add_ps(simd::Swizzle<kAxisY, kAxisX, kAxisX, kAxisW>(xx_yy_zz_ww), simd::Swizzle<kAxisZ, kAxisZ, kAxisY, kAxisW>(xx_yy_zz_ww));
 		/// [1-(yy + zz), 1-(xx + zz), 1-(xx + yy)]
 		diag = _mm_sub_ps(_mm_set1_ps(1.0f), diag);
 
@@ -1338,17 +1473,18 @@ namespace vx
 		/// 01_20_12: a + b
 		/// 10_02_21: a - b
 
-		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<0, 0, 1, 1>(t_xyz), simd::Swizzle<1, 2, 2, 2>(_q));
-		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<3, 3, 3, 3>(_q), simd::Swizzle<2, 1, 0, 3>(t_xyz));
+		__m128 xy_xz_yz = _mm_mul_ps(simd::Swizzle<kAxisX, kAxisX, kAxisY, kAxisY>(t_xyz), simd::Swizzle<kAxisY, kAxisZ, kAxisZ, kAxisZ>(_q));
+		__m128 w_zyx = _mm_mul_ps(simd::Swizzle<kAxisW, kAxisW, kAxisW, kAxisW>(_q), simd::Swizzle<kAxisZ, kAxisY, kAxisX, kAxisW>(t_xyz));
 
 		/// require write 
 		/// d 01 02
 		/// 10 d 12 
 		/// 20 21 d
 		__m128 r20_01_12 = _mm_add_ps(xy_xz_yz, w_zyx); //01_20_12
-		r20_01_12 = simd::Swizzle<1, 0, 2, 2>(r20_01_12);
+		r20_01_12 = simd::Swizzle<kAxisY, kAxisX, kAxisZ, kAxisZ>(r20_01_12);
 		__m128 r10_21_02 = _mm_sub_ps(xy_xz_yz, w_zyx); //10_02_21
-		r10_21_02 = simd::Swizzle<0, 2, 1, 1>(r10_21_02);
+		r10_21_02 = simd::Swizzle<kAxisX, kAxisZ, kAxisY, kAxisY>(r10_21_02);
+
 
 		__m128 xC = _mm_blend_ps(_mm_blend_ps(diag, r20_01_12, 0b1110), r10_21_02, 0b1100);
 		__m128 yC = _mm_blend_ps(_mm_blend_ps(r10_21_02, diag, 0b1110), r20_01_12, 0b1100);
@@ -1461,16 +1597,61 @@ namespace vx
 	}
 
 
-
-	inline VX_INLINE Mat44 Mat44::PreScaled(const Vec3& scale)
-	{
-		return Mat44(mCol[0] * scale.X(), mCol[1] * scale.Y(), mCol[2] * scale.Z(), mCol[3]);
-	}
-
-	inline VX_INLINE Mat44 Mat44::PostScaled(const Vec3& scale)
+	VX_INLINE void Mat44::ScaleGlobal(const Vec3& scale)
 	{
 		Vec4 s(scale, 1.0f);
-		return Mat44(mCol[0] * s, mCol[1] * s, mCol[2] * s, mCol[3] * s);
+		mCol[0] *= s;
+		mCol[1] *= s;
+		mCol[2] *= s;
+		mCol[3] *= s;
+	}
+	inline VX_INLINE Mat44 Mat44::ScaledGlobal(const Vec3& scale)
+	{
+		Mat44 M = *this;
+		M.ScaleGlobal(scale);
+		return M;
+	}
+
+	inline VX_INLINE void Mat44::ScaleLocal(const Vec3& scale)
+	{
+		mCol[0] *= scale.X();
+		mCol[1] *= scale.Y();
+		mCol[2] *= scale.Z();
+	}
+
+	inline VX_INLINE Mat44 Mat44::ScaledLocal(const Vec3& scale)
+	{
+		Mat44 M = *this;
+		M.ScaleLocal(scale);
+		return M;
+	}
+
+	inline VX_INLINE void Mat44::TranslateGlobal(const Vec3& t)
+	{
+		mCol[3].Add3(t);
+		mCol[3][3] = 1.0f; //<-- ensure homogenouse
+	}
+
+	inline VX_INLINE void Mat44::TranslateLocal(const Vec3& t)
+	{
+		const Vec3& local_offset = Multiply3x3(t);
+		//add oriented offset to world pos
+		mCol[3].Add3(local_offset);
+		mCol[3][3] = 1.0f; //<-- ensure homogenouse
+	}
+
+	inline VX_INLINE Mat44 Mat44::TranslatedLocal(const Mat44& M, const Vec3& t)
+	{
+		Mat44 Mt = M;
+		Mt.TranslateLocal(t);
+		return Mt;
+	}
+
+	inline VX_INLINE Mat44 Mat44::TranslatedGlobal(const Mat44& M, const Vec3& t)
+	{
+		Mat44 Mt = M;
+		Mt.TranslateGlobal(t);
+		return Mt;
 	}
 
 	inline VX_INLINE void Mat44::MakeOrthonormal()

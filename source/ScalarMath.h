@@ -113,7 +113,15 @@ namespace vx
 		return diff <= eps * scale;
 	}
 
+	VX_INLINE float VxPow(float base, float exp)
+	{
+		return std::pow(base, exp);
+	}
 
+	VX_INLINE double VxPow(double base, double exp)
+	{
+		return std::pow(base, exp);
+	}
 
 	//////////////////////////////////////////////////////
 	// Trigonometry
@@ -186,6 +194,20 @@ namespace vx
 	VX_INLINE double VxAcos(double v)
 	{
 		return std::acos(v);
+	}
+	/// Arc-sine function (float).
+	/// range [-1, 1]
+	/// Out-of-range input produce NaN
+	VX_INLINE float VxAsin(float v)
+	{
+		return std::asin(v);
+	}
+	/// Arc-sine function (double).
+	/// range [-1, 1]
+	/// Out-of-range input produce NaN
+	VX_INLINE double VxAsin(double v)
+	{
+		return std::asin(v);
 	}
 	/// Computes the angle (in radians)
 	/// from x-axis to the point (x, y)

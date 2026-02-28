@@ -5,6 +5,8 @@
 #include "Mat44.h"
 #include "Vec4.h"
 #include "Vec3.h"
+#include "Axis.h"
+#include "Float3.h"
 
 inline void CHECK_APPROX_EQ(float a, float b, float eps = 1e-6f)
 {

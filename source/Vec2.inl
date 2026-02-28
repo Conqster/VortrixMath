@@ -2,6 +2,8 @@
 #include "SimdUtil.h"
 #include "ScalarMath.h"
 
+#include "Axis.h"
+
 namespace vx
 {
 	inline Vec2::Vec2(__m128 vec)
@@ -81,6 +83,18 @@ namespace vx
 #endif // VX_USE_SSE
 
 	}
+
+
+	inline VX_INLINE Axis Vec2::MinAxis() const
+	{
+		return (x < y) ? Axis::X : Axis::Y;
+	}
+
+	inline VX_INLINE Axis Vec2::MaxAxis() const
+	{
+		return (x > y) ? Axis::X : Axis::Y;
+	}
+
 
 	inline VX_INLINE Vec2 Vec2::Min(const Vec2& lhs, const Vec2& rhs)
 	{
@@ -302,12 +316,23 @@ namespace vx
 		return *this;
 	}
 
-	template<int X, int Y>
+
+	template<Axis Swizzle_X, Axis Swizzle_Y>
 	inline VX_INLINE [[nodiscard]] Vec2 Vec2::Swizzle() const
 	{
-		VX_ASSERT(X >= 0 && X <= 3, "X out of [0, 3] range");
-		VX_ASSERT(Y >= 0 && Y <= 3, "X out of [0, 3] range");
-		return Vec2(mFloats[X], mFloats[Y]);
+		VX_ASSERT(Swizzle_X <= Axis::Y &&
+			Swizzle_Y <= Axis::Y, "Vec2 swizzle Z&W is invalid");
+		return Vec2(mFloats[static_cast<int>(Swizzle_X)], mFloats[static_cast<int>(Swizzle_Y)]);
+	}
+
+	template<int X, int Y>
+	inline VX_INLINE [[nodiscard]] Vec2 Vec2::Swizzle(const vx::Vec2& a, const vx::Vec2& b)
+	{
+		VX_ASSERT(X >= 0 && X < 4, "");
+		VX_ASSERT(Y >= 0 && Y < 4, "");
+
+		float buffer[4] = { a[0], a[1], b[0], b[1] };
+		return Vec2(buffer[X], buffer[Y]);
 	}
 
 	inline VX_INLINE Vec2 Vec2::operator+(const Vec2& rhs) const

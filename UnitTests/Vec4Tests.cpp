@@ -52,6 +52,15 @@ TEST_SUITE("Vec4 Tests")
 		b /= 2;
 		CHECK_APPROX_EQ(b, vx::Vec4(1.0f, 2.0f, 3.0f, 4.0f));
 
+
+		vx::Vec4 vec4 = { 4, 4, 4, 4 };
+		vx::Vec3 vec3 = { 3, 3, 3 };
+		vec4.Add3(vec3);
+		CHECK_APPROX_EQ(vec4, vx::Vec4(7, 7, 7, 4));
+
+		vec4 = { 4, 4, 4, 4 };
+		vec4.Multiply3(vec3);
+		CHECK_APPROX_EQ(vec4, vx::Vec4(12, 12, 12, 4));
 	}
 
 
@@ -89,23 +98,23 @@ TEST_SUITE("Vec4 Tests")
 
 		//max axis
 		//on x
-		CHECK(vx::Vec4(200, 2, 4, 34).MaxAxis() == 0);
+		CHECK(vx::Vec4(200, 2, 4, 34).MaxAxis() == vx::Axis::X);
 		//on y
-		CHECK(vx::Vec4(20, 200, 4, 34).MaxAxis() == 1);
+		CHECK(vx::Vec4(20, 200, 4, 34).MaxAxis() == vx::Axis::Y);
 		//on z
-		CHECK(vx::Vec4(20, 2, 400, 34).MaxAxis() == 2);
+		CHECK(vx::Vec4(20, 2, 400, 34).MaxAxis() == vx::Axis::Z);
 		//on w
-		CHECK(vx::Vec4(2, 2, 4, 34).MaxAxis() == 3);
+		CHECK(vx::Vec4(2, 2, 4, 34).MaxAxis() == vx::Axis::W);
 
 		//min axis
 		//on x
-		CHECK(vx::Vec4(2, 20, 4, 34).MinAxis() == 0);
+		CHECK(vx::Vec4(2, 20, 4, 34).MinAxis() == vx::Axis::X);
 		//on y
-		CHECK(vx::Vec4(20, 2, 400, 34).MinAxis() == 1);
+		CHECK(vx::Vec4(20, 2, 400, 34).MinAxis() == vx::Axis::Y);
 		//on z
-		CHECK(vx::Vec4(20, 200, 4, 34).MinAxis() == 2);
+		CHECK(vx::Vec4(20, 200, 4, 34).MinAxis() == vx::Axis::Z);
 		//on w
-		CHECK(vx::Vec4(20, 20, 40, 3).MinAxis() == 3);
+		CHECK(vx::Vec4(20, 20, 40, 3).MinAxis() == vx::Axis::W);
 
 
 		vx::Vec4 a = vx::Vec4(3.0f, 0.0f, 4.0f, 1.0f);

@@ -144,10 +144,10 @@ TEST_SUITE("Mat44 Test")
 				vx::Mat44 pre_scale_out(M);
 				pre_scale_out.SetDiagonal3(scale); //<-- translation remains the same only diagonal of matrix
 				//mimic local space scaling
-				CHECK(M.PreScaled(scale) == pre_scale_out);
+				CHECK(M.ScaledLocal(scale) == pre_scale_out);
 			}
 
-			CHECK(M.PostScaled(scale) == vx::Mat44(vx::Vec4(2.0f, 0.0f, 0.0f, 0.0f),
+			CHECK(M.ScaledGlobal(scale) == vx::Mat44(vx::Vec4(2.0f, 0.0f, 0.0f, 0.0f),
 				vx::Vec4(0.0f, 3.0f, 0.0f, 0.0f),
 				vx::Vec4(0.0f, 0.0f, 4.0f, 0.0f),
 				vx::Vec4(10.0f, 18.0f, 28.0f, 1.0f)));
@@ -165,7 +165,7 @@ TEST_SUITE("Mat44 Test")
 			double cos_rad = vx::VxCos(vx::DegToRad(45.0f));
 
 			{
-				vx::Mat44 M_pre = M.PreScaled(scale);
+				vx::Mat44 M_pre = M.ScaledLocal(scale);
 				CHECK(M_pre.GetTranslation() == translate);
 				CHECK(M_pre(3, 3) == 1.0f);
 				float test10 = M_pre(1, 0);
@@ -178,7 +178,7 @@ TEST_SUITE("Mat44 Test")
 			}
 
 			{
-				vx::Mat44 M_post = M.PostScaled(scale);
+				vx::Mat44 M_post = M.ScaledGlobal(scale);
 				CHECK(M_post.GetTranslation() == translate * scale);
 				CHECK(M_post(3, 3) == 1.0f);
 				CHECK_APPROX_EQ(M_post(0, 0), 1.414f, 1e-3f);

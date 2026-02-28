@@ -1,9 +1,6 @@
 #pragma once
 
 #include "Core.h"
-//#include "Mat44.h"
-//#include "Vec4.h"
-//#include "Vec3.h"
 
 namespace vx
 {
@@ -66,6 +63,17 @@ namespace vx
 		/// @param o_axis Output rotation axis (normalise)
 		/// @param o_angle Output rotation angle in radians
 		VX_INLINE void GetAxisAngle(Vec3& o_axis, float& o_angle);
+		/// Create quaternion from euler-angle representation
+		/// @param (pitch, yaw, roll) angles in radians.
+		/// @return quat from euler-angle, Rotation order is (pitch) X then (yaw) Y then (roll) Z, 
+		/// (rot_x * rot_y * rot_z)
+		static VX_INLINE Quat FromEulerAngle(float pitch, float yaw, float roll);
+		/// Create quaternion from euler-angle representation
+		/// @param angles (pitch yaw roll) representing rotation in euler
+		/// @return quat from euler-angle, Rotation order is X then Y then Z, 
+		/// (rot_x * rot_y * rot_z)
+		static VX_INLINE Quat FromEulerAngle(const Vec3& angles) { return FromEulerAngle(angles.X(), angles.Y(), angles.Z()); }
+		VX_INLINE Vec3 GetAxisAngle() const;
 
 		/// Normlise this vector in place
 		VX_INLINE void Normalise();
@@ -151,6 +159,12 @@ namespace vx
 		VX_INLINE Quat operator*(const Quat& rhs) const;
 		/// Quaternion multipluication (in place)
 		VX_INLINE Quat operator*=(const Quat& rhs);
+
+		VX_INLINE Quat operator*(float rhs) const { return Quat(mValue * rhs); }
+		VX_INLINE friend Quat operator*(float rhs, const Quat& q) { return Quat(q.mValue * rhs); }
+		VX_INLINE Quat operator*=(float rhs) { mValue *= rhs; return *this; }
+		VX_INLINE Quat& operator+=(const Quat& rhs) { mValue += rhs.mValue; }
+
 		/// Rotate vector (same as Rotate(const Vec3))
 		VX_INLINE Vec3 operator*(const Vec3& vec) const { return Rotate(vec); }
 		/// Scalar division

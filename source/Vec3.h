@@ -47,11 +47,11 @@ namespace vx
 		/// Component accessor by index
 		/// @param i Index (0 = x, 1 = y, 2 = z)
 		/// @return reference to component
-		VX_INLINE float& operator[](uint32_t i);
+		VX_INLINE float& operator[](uint32 i);
 		/// Component accessor by index const
 		/// @param i Index (0 = x, 1 = y, 2 = z)
 		/// @return const reference to component
-		VX_INLINE float const& operator[](uint32_t i) const;
+		VX_INLINE float const& operator[](uint32 i) const;
 
 		/// Read component by simd register lane index
 		/// @param v vector
@@ -121,12 +121,12 @@ namespace vx
 		/// @return 0 for x. 
 		/// @return 1 for y.
 		/// @return 2 for z.
-		VX_INLINE int MinAxis() const;
+		VX_INLINE Axis MinAxis() const;
 		/// Index of largest component
 		/// @return 0 for x. 
 		/// @return 1 for y.
 		/// @return 2 for z.
-		VX_INLINE int MaxAxis() const;
+		VX_INLINE Axis MaxAxis() const;
 
 		/// @return a vector from the smallest component of lhs & rhs vectors
 		VX_INLINE static Vec3 Min(const Vec3& lhs, const Vec3& rhs);
@@ -218,7 +218,7 @@ namespace vx
 		template<int X, int Y, int Z>
 		VX_INLINE [[nodiscard]] Vec3 FlipSign() const;
 		/// swizzle (shhuffle) components
-		template<int X, int Y, int Z>
+		template<Axis Swizzle_X, Axis Swizzle_Y, Axis Swizzle_Z>
 		VX_INLINE [[nodiscard]] Vec3 Swizzle() const;
 
 		/// Component-wise Reciprocal
@@ -238,6 +238,9 @@ namespace vx
 		VX_INLINE Vec3 LoadAligned(const float* v);
 		/// Load unaligned float array
 		VX_INLINE Vec3 Load(const float* v);
+
+		VX_INLINE void Store(Float3& o_float3) const;
+		VX_INLINE Float3 ToFloat3() const;
 
 		VX_INLINE friend std::ostream& operator<<(std::ostream& os, const Vec3& v)
 		{

@@ -162,7 +162,7 @@ TEST_SUITE("Quat Tests")
 		CHECK_APPROX_EQ(q.RotateAxisY() * scale.Y(), y);
 		CHECK_APPROX_EQ(q.RotateAxisZ() * scale.Z(), z);
 
-		vx::Mat44 M = q.GetRotationMat44().PreScaled(scale);
+		vx::Mat44 M = q.GetRotationMat44().ScaledLocal(scale);
 
 		CHECK_APPROX_EQ(M.GetAxisX(), x);
 		CHECK_APPROX_EQ(M.GetAxisY(), y);

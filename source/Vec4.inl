@@ -2,6 +2,8 @@
 #include "Vec3.h"
 #include "SimdUtil.h"
 
+#include "Axis.h"
+
 namespace vx
 {
 
@@ -78,12 +80,12 @@ namespace vx
 #endif // VX_USE_SSE
 	}
 
-	inline VX_INLINE float& Vec4::operator[](uint32_t i)
+	inline VX_INLINE float& Vec4::operator[](uint32 i)
 	{
 		VX_ASSERT(i < 4, "Trying to access invalid Vec4 index");
 		return mFloats[i];
 	}
-	inline VX_INLINE float const& Vec4::operator[](uint32_t i) const
+	inline VX_INLINE float const& Vec4::operator[](uint32 i) const
 	{
 		VX_ASSERT(i < 4, "Trying to access invalid Vec4 index");
 		return mFloats[i];
@@ -100,7 +102,6 @@ namespace vx
 	inline VX_INLINE Vec4 Vec4::Zero()
 	{
 #ifdef VX_USE_SSE
-		//return Vec4(_mm_setzero_ps());
 		return _mm_setzero_ps();
 #else
 		return Vec4(0.0f);
@@ -232,9 +233,6 @@ namespace vx
 	inline Vec4 Vec4::operator/(const float scalar) const
 	{
 #ifdef VX_USE_SSE
-		//return _mm_div_ps(value, _mm_set_ps1(scalar));//<- expensive div per lane
-		//return _mm_mul_ps(value, _mm_set_ps1(1.0f /scalar)); <- loss precision due 1/s, most case fastest 
-
 		//one lane division, shuffle x lane across, then mul
 		__m128 v = _mm_div_ss(_mm_set_ps1(1.0f), _mm_set_ps1(scalar));
 		return _mm_mul_ps(mValue, _mm_shuffle_ps(v, v, _MM_SHUFFLE(0, 0, 0, 0)));
@@ -250,9 +248,6 @@ namespace vx
 	inline Vec4& Vec4::operator/=(const float scalar)
 	{
 #ifdef VX_USE_SSE
-		//return _mm_div_ps(value, _mm_set_ps1(scalar));//<- expensive div per lane
-		//return _mm_mul_ps(value, _mm_set_ps1(1.0f /scalar)); <- loss precision due 1/s, most case fastest 
-
 		//one lane division, shuffle x lane across, then mul
 		__m128 v = _mm_div_ss(_mm_set_ps1(1.0f), _mm_set_ps1(scalar));
 		mValue = _mm_mul_ps(mValue, _mm_shuffle_ps(v, v, _MM_SHUFFLE(0, 0, 0, 0)));
@@ -307,9 +302,6 @@ namespace vx
 	Vec4 Vec4::operator/(const Vec4& rhs) const
 	{
 #ifdef VX_USE_SSE
-		//return _mm_div_ps(value, _mm_set_ps1(scalar));//<- expensive div per lane
-		//return _mm_mul_ps(value, _mm_set_ps1(1.0f /scalar)); <- loss precision due 1/s, most case fastest 
-
 		//one lane division, shuffle x lane across, then mul
 		return _mm_div_ps(mValue, rhs.mValue);
 #else
@@ -323,9 +315,6 @@ namespace vx
 	inline VX_INLINE Vec4& Vec4::operator/=(const Vec4& rhs)
 	{
 #ifdef VX_USE_SSE
-		//return _mm_div_ps(value, _mm_set_ps1(scalar));//<- expensive div per lane
-		//return _mm_mul_ps(value, _mm_set_ps1(1.0f /scalar)); <- loss precision due 1/s, most case fastest 
-
 		//one lane division, shuffle x lane across, then mul
 		mValue = _mm_div_ps(mValue, rhs.mValue);
 #else
@@ -342,7 +331,7 @@ namespace vx
 		int mask = _mm_movemask_ps(cmp);
 		return mask == 0b1111;
 #else
-		uint32_t v[4];
+		uint32 v[4];
 		v[0] = mFloats[0] == rhs.mFloats[0] ? 0xffffffffu : 0;
 		v[1] = mFloats[1] == rhs.mFloats[1] ? 0xffffffffu : 0;
 		v[2] = mFloats[2] == rhs.mFloats[2] ? 0xffffffffu : 0;
@@ -356,14 +345,38 @@ namespace vx
 #endif // USE_SIMD_SSE
 	}
 
+	inline VX_INLINE void Vec4::Add3(const Vec3& v3)
+	{
+		/// need to address the fact that vector 3 is x, y, z, z, internally 
+		/// new proposed idea is to have internal value as x, y, z, 0
+		/// to behave as point, no direction 
+		/// and helps to not rely on masking out junk data
+#ifdef VX_USE_SSE
+		__m128 v = _mm_setr_ps(v3.X(), v3.Y(), v3.Z(), 0);
+		mValue = _mm_add_ps(mValue, v);
+#else
+		mFloats[0] + rhs.mFloats[0];
+		mFloats[1] + rhs.mFloats[1];
+		mFloats[2] + rhs.mFloats[2];
+#endif // USE_SIMD_SSE
+	}
+
+	inline VX_INLINE void Vec4::Multiply3(const Vec3& v3)
+	{
+#ifdef VX_USE_SSE
+		__m128 v = _mm_setr_ps(v3.X(), v3.Y(), v3.Z(), 1);
+		mValue = _mm_mul_ps(mValue, v);
+#else
+		mFloats[0] * rhs.mFloats[0];
+		mFloats[1] * rhs.mFloats[1];
+		mFloats[2] * rhs.mFloats[2];
+		mFloats[3] * rhs.mFloats[3];
+#endif // USE_SIMD_SSE
+	}
+
 	inline VX_INLINE float Vec4::MinComponent() const
 	{
 #ifdef VX_USE_SSE
-		//__m128 shuf1 = _mm_shuffle_ps(value, value, _MM_SHUFFLE(2, 3, 0, 1)); // y z w x
-		//__m128 min1 = _mm_min_ps(value, shuf1); // min(x,y) min(y,z) min(z,w) min(w,x)
-		//__m128 shuf2 = _mm_shuffle_ps(min1, min1, _MM_SHUFFLE(1, 0, 3, 2)); // z w x y
-		//__m128 min2 = _mm_min_ps(min1, shuf2); // min(min(x,y),min(z,w)) min(min(y,z),min(w,x)) ...
-		//return _mm_cvtss_f32(min2); // extract the first element
 
 		__m128 v = mValue;
 		v = _mm_min_ps(v, _mm_shuffle_ps(v, v, _MM_SHUFFLE(2, 3, 0, 1))); //min x & z min z & w
@@ -384,11 +397,6 @@ namespace vx
 	inline VX_INLINE float Vec4::MaxComponent() const
 	{
 #ifdef VX_USE_SSE
-		//__m128 shuf1 = _mm_shuffle_ps(value, value, _MM_SHUFFLE(2, 3, 0, 1)); // y z w x
-		//__m128 max1 = _mm_max_ps(value, shuf1); // max(x,y) max(y,z) max(z,w) max(w,x)
-		//__m128 shuf2 = _mm_shuffle_ps(max1, max1, _MM_SHUFFLE(1, 0, 3, 2)); // z w x y
-		//__m128 max2 = _mm_max_ps(max1, shuf2); // max(max(x,y),max(z,w)) max(max(y,z),max(w,x)) ...
-		//return _mm_cvtss_f32(max2); // extract the first element
 
 		__m128 v = mValue;
 		v = _mm_max_ps(v, _mm_shuffle_ps(v, v, _MM_SHUFFLE(2, 3, 0, 1))); //min x & z (shuffle 
@@ -405,14 +413,14 @@ namespace vx
 #endif // USE_SIMD_SSE
 	}
 
-	inline VX_INLINE int Vec4::MaxAxis() const
+	inline VX_INLINE Axis Vec4::MaxAxis() const
 	{
-		return (X() > Y()) ? ((X() > Z()) ? ((X() > W()) ? 0 : 3) : (Z() > W() ? 2 : 3)) : ((Y() > Z()) ? ((Y() > W()) ? 1 : 3) : (Z() > W() ? 2 : 3));
+		return (X() > Y()) ? ((X() > Z()) ? ((X() > W()) ? Axis::X : Axis::W) : (Z() > W() ? Axis::Z : Axis::W)) : ((Y() > Z()) ? ((Y() > W()) ? Axis::Y : Axis::W) : (Z() > W() ? Axis::Z : Axis::W));
 	}
 
-	inline VX_INLINE int Vec4::MinAxis() const
+	inline VX_INLINE Axis Vec4::MinAxis() const
 	{
-		return (X() < Y()) ? ((X() < Z()) ? ((X() < W()) ? 0 : 3) : (Z() < W() ? 2 : 3)) : ((Y() < Z()) ? ((Y() < W()) ? 1 : 3) : (Z() < W() ? 2 : 3));
+		return (X() < Y()) ? ((X() < Z()) ? ((X() < W()) ? Axis::X : Axis::W) : (Z() < W() ? Axis::Z : Axis::W)) : ((Y() < Z()) ? ((Y() < W()) ? Axis::Y : Axis::W) : (Z() < W() ? Axis::Z : Axis::W));
 	}
 
 	inline VX_INLINE Vec4 Vec4::Min(const Vec4& lhs, const Vec4& rhs)
@@ -543,11 +551,6 @@ namespace vx
 		/// x, y, z
 		/// 
 #else
-		//Vec3 temp = Vec3(0.0f);
-		//temp.mFloats[0] = (lhs.Y() * rhs.Z()) - (rhs.Y() * lhs.Z());
-		//temp.mFloats[1] = (rhs.X() * lhs.Z()) - (lhs.X() * rhs.Z());
-		//temp.mFloats[2] = (lhs.X() * rhs.Y()) - (rhs.X() * lhs.Y());
-		//return temp;
 		return Vec3((lhs.Y() * rhs.Z()) - (rhs.Y() * lhs.Z()),
 			(rhs.X() * lhs.Z()) - (lhs.X() * rhs.Z()),
 			(lhs.X() * rhs.Y()) - (rhs.X() * lhs.Y()));
@@ -654,7 +657,6 @@ namespace vx
 	inline VX_INLINE Vec4 Vec4::Inverted() const
 	{
 #ifdef VX_USE_SSE
-		//return _mm_mul_ps(mValue, _mm_set_ps1(-1.0f)); <-- extra cycle
 		return _mm_xor_ps(mValue, _mm_set_ps1(-0.0f)); //<-- 1 cycle (bitwise)
 #else
 		return Vec4(-mFloats[0], -mFloats[1], -mFloats[2], -mFloats[3]);
@@ -699,6 +701,13 @@ namespace vx
 	template<int X, int Y, int Z, int W>
 	inline VX_INLINE void vx::Vec4::FlipSignAssign()
 	{
+		VX_ASSERT(
+			X != 0 &&
+			Y != 0 &&
+			Z != 0 &&
+			W != 0,
+			"X, Y, Z, & W need to be either -1 or 1"
+		);
 #ifdef VX_USE_SSE
 		mValue = _mm_xor_ps(mValue, simd::SignMask<X, Y, Z, W>());
 #else
@@ -717,17 +726,19 @@ namespace vx
 		return v;
 	}
 
-	template<int X, int Y, int Z, int W>
+	template<Axis Swizzle_X, Axis Swizzle_Y, Axis Swizzle_Z, Axis Swizzle_W>
 	inline VX_INLINE [[nodiscard]] Vec4 Vec4::Swizzle() const
 	{
-		VX_ASSERT(X >= 0 && X <= 3, "X out of [0, 3] range");
-		VX_ASSERT(Y >= 0 && Y <= 3, "X out of [0, 3] range");
-		VX_ASSERT(Z >= 0 && Z <= 3, "X out of [0, 3] range");
-		VX_ASSERT(W >= 0 && W <= 3, "X out of [0, 3] range");
 #ifdef VX_USE_SSE
-		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(W, Z, Y, X));
+		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(static_cast<int>(Swizzle_W),
+			static_cast<int>(Swizzle_Z),
+			static_cast<int>(Swizzle_Y),
+			static_cast<int>(Swizzle_X)));
 #else
-		return Vec4(mFloats[X], mFloats[Y], mFloat[Z], mFloat[W]);
+		return Vec3(mFloats[static_cast<int>(Swizzle_X)],
+			mFloats[static_cast<int>(Swizzle_Y)],
+			mFloats[static_cast<int>(Swizzle_Z)],
+			mFloats[static_cast<int>(Swizzle_W)]);
 #endif // VX_USE_SSE
 	}
 

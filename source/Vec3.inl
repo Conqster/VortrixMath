@@ -3,6 +3,9 @@
 #include "Vec2.h"
 #include "SimdUtil.h"
 
+#include "Float3.h"
+#include "Axis.h"
+
 namespace vx
 {
 	inline Vec3::Vec3()
@@ -35,9 +38,10 @@ namespace vx
 #endif // USE_SIMD_SSE
 	}
 	inline Vec3::Vec3(const Vec4& rhs) :
-		Vec3(rhs.XYZ()) {}
+		Vec3(rhs.XYZ()) {
+	}
 
-	inline Vec3::Vec3(__m128 vec) : 
+	inline Vec3::Vec3(__m128 vec) :
 		mValue(_mm_shuffle_ps(vec, vec, _MM_SHUFFLE(2, 2, 1, 0)))
 	{
 	}
@@ -120,9 +124,10 @@ namespace vx
 
 	inline VX_INLINE bool Vec3::IsZero(float eps) const
 	{
-		return mFloats[0] <= eps &&
-			mFloats[1] <= eps &&
-			mFloats[2] <= eps;
+		//change x + y + z <= eps * eps
+		return VxAbs(mFloats[0]) <= eps &&
+			VxAbs(mFloats[1]) <= eps &&
+			VxAbs(mFloats[2]) <= eps;
 	}
 
 	inline VX_INLINE bool Vec3::IsApprox(const Vec3& rhs, float eps_sq) const
@@ -248,7 +253,7 @@ namespace vx
 
 	inline VX_INLINE Vec3 Vec3::operator-() const
 	{
-#if VX_USE_SSE
+#ifdef VX_USE_SSE
 		return _mm_sub_ps(_mm_setzero_ps(), mValue);
 #else
 		return Vec3(-mFloats[0], -mFloats[1], -mFloats[2]);
@@ -261,8 +266,8 @@ namespace vx
 		//broad cast or load scalar
 		return _mm_mul_ps(mValue, rhs.mValue);
 #else
-		return Vec3(mFloats[0] * rhs.mFloats[0], 
-			mFloats[1] * rhs.mFloats[1], 
+		return Vec3(mFloats[0] * rhs.mFloats[0],
+			mFloats[1] * rhs.mFloats[1],
 			mFloats[2] * rhs.mFloats[2]);
 #endif // VX_USE_SSE
 	}
@@ -284,7 +289,7 @@ namespace vx
 
 	inline VX_INLINE Vec3 Vec3::operator/(const Vec3& rhs) const
 	{
-		
+
 		VX_ASSERT(VxAbs(rhs.mFloats[2] - rhs.mFloats[3]) < kEpsilon, "W must equal Z (vec3), to prevent zero division");
 
 #ifdef VX_USE_SSE
@@ -366,14 +371,16 @@ namespace vx
 #endif // VX_USE_SSE
 	}
 
-	inline VX_INLINE int Vec3::MinAxis() const
+	inline VX_INLINE Axis Vec3::MinAxis() const
 	{
-		return (mFloats[0] < mFloats[1]) ? ((mFloats[0] < mFloats[2]) ? 0 : 2) : (mFloats[1] < mFloats[2]) ? 1 : 2;
+		//return (mFloats[0] < mFloats[1]) ? ((mFloats[0] < mFloats[2]) ? 0 : 2) : (mFloats[1] < mFloats[2]) ? 1 : 2;
+		return (mFloats[0] < mFloats[1]) ? ((mFloats[0] < mFloats[2]) ? Axis::X : Axis::Z) : (mFloats[1] < mFloats[2]) ? Axis::Y : Axis::Z;
 	}
 
-	inline VX_INLINE int Vec3::MaxAxis() const
+	inline VX_INLINE Axis Vec3::MaxAxis() const
 	{
-		return (mFloats[0] > mFloats[1]) ? ((mFloats[0] > mFloats[2]) ? 0 : 2) : (mFloats[1] > mFloats[2]) ? 1 : 2;
+		//return (mFloats[0] > mFloats[1]) ? ((mFloats[0] > mFloats[2]) ? 0 : 2) : (mFloats[1] > mFloats[2]) ? 1 : 2;
+		return (mFloats[0] > mFloats[1]) ? ((mFloats[0] > mFloats[2]) ? Axis::X : Axis::Z) : (mFloats[1] > mFloats[2]) ? Axis::Y : Axis::Z;
 	}
 
 
@@ -563,7 +570,7 @@ namespace vx
 		/// scalar equivalent Dot(x, Cross(Y, Z)
 		/// TBN
 		/// Dot(N, Cross(T, B)
-		
+
 
 		//Cross bc
 		__m128 T = _mm_shuffle_ps(c.mValue, c.mValue, _MM_SHUFFLE(3, 0, 2, 1));
@@ -717,7 +724,7 @@ namespace vx
 		//scalar optimisationm 
 		// one div then 2 mul (over 2 div) 
 		if (VxAbs(X()) < VxAbs(Y()))
-		{ 
+		{
 			float inv = 1.0f / VxSqrt(Y() * Y() + Z() * Z());
 			return Vec3(0.0f, -Z() * inv, Y() * inv);
 		}
@@ -787,19 +794,19 @@ namespace vx
 	}
 
 
-	template<int X, int Y, int Z>
+	template<int _X, int _Y, int _Z>
 	inline VX_INLINE void vx::Vec3::FlipSignAssign()
 	{
-		VX_ASSERT(X == 1 || X == -1 ||
-			Y == 1 || Y == -1 ||
-			Z == 1 || Z == -1, "out of bounds range [-1, 1]");
+		VX_ASSERT(_X == 1 || _X == -1 ||
+			_Y == 1 || _Y == -1 ||
+			_Z == 1 || _Z == -1, "out of bounds range [-1, 1]");
 
 #ifdef VX_USE_SSE
-		mValue = _mm_xor_ps(mValue, simd::SignMask<X, Y, Z, Z>());
+		mValue = _mm_xor_ps(mValue, simd::SignMask<_X, _Y, _Z, _Z>());
 #else
-		if constexpr (X < 0) mFloats[0] = -mFloats[0];
-		if constexpr (Y <0) mFloats[1] = -mFloats[1];
-		if constexpr (Z <0) mFloats[2] = -mFloats[2];
+		if constexpr (_X < 0) mFloats[0] = -mFloats[0];
+		if constexpr (_Y < 0) mFloats[1] = -mFloats[1];
+		if constexpr (_Z < 0) mFloats[2] = -mFloats[2];
 		//mFloats[3] = mFloats[2];
 #endif // VX_USE_SSE
 	}
@@ -812,16 +819,21 @@ namespace vx
 		return v;
 	}
 
-	template<int X, int Y, int Z>
+	template<Axis Swizzle_X, Axis Swizzle_Y, Axis Swizzle_Z>
 	inline VX_INLINE [[nodiscard]] Vec3 Vec3::Swizzle() const
 	{
-		VX_ASSERT(X >= 0 && X <= 3, "X out of [0, 3] range");
-		VX_ASSERT(Y >= 0 && Y <= 3, "X out of [0, 3] range");
-		VX_ASSERT(Z >= 0 && Z <= 3, "X out of [0, 3] range");
+		VX_ASSERT(Swizzle_X != Axis::W &&
+			Swizzle_Y != Axis::W &&
+			Swizzle_Z != Axis::W, "Vec3 swizzle W is invalid");
 #ifdef VX_USE_SSE
-		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(Z, Z, Y, X));
+		return _mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(static_cast<int>(Swizzle_Z),
+			static_cast<int>(Swizzle_Z),
+			static_cast<int>(Swizzle_Y),
+			static_cast<int>(Swizzle_X)));
 #else
-		return Vec3(mFloats[X], mFloats[Y], mFloat[Z]);
+		return Vec3(mFloats[static_cast<int>(Swizzle_X)],
+			mFloats[static_cast<int>(Swizzle_Y)],
+			mFloats[static_cast<int>(Swizzle_Z)]); //?? bug ?? mFloats not mFloat
 #endif // VX_USE_SSE
 	}
 
@@ -883,5 +895,26 @@ namespace vx
 #else
 		return Vec3(v[0], v[1], v[2]);
 #endif // VX_USE_SSE
+	}
+	inline VX_INLINE void Vec3::Store(Float3& o_float3) const
+	{
+#ifdef VX_USE_SSE
+		//x,y (lower 64 bit)
+		_mm_storel_pi(reinterpret_cast<__m64*>(&o_float3.x), mValue);
+		//store z
+		_mm_store_ss(&o_float3.z,
+			_mm_shuffle_ps(mValue, mValue, _MM_SHUFFLE(2, 2, 2, 2)));
+		//simd::Swizzle<kAxisZ, kAxisZ, kAxisZ, kAxisZ>(mValue));
+#else
+		o_float3.x = mFloats[0];
+		o_float3.y = mFloats[1];
+		o_float3.z = mFloats[2];
+#endif // VX_USE_SSE
+	}
+	inline VX_INLINE Float3 Vec3::ToFloat3() const
+	{
+		Float3 t_out;
+		Store(t_out);
+		return t_out;
 	}
 }

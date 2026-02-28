@@ -5,14 +5,13 @@
 
 namespace vx
 {
-
 	/*
 	* Mat44:- 4x4 matrix class
 	* 4x4 Column-major matrix for affine and general tranformation
 	* 
-	* Usage:
-	* - affine transforms (rotation, translation, scale)
-	* - 3x3 operations (3x3 upper left of matrix) (rotation / scaling)
+	* Primary usage:
+	* - Affine transforms (rotation, translation, scale)
+	* - 3x3 operations via upper-left submatrix (rotation / scaling)
 	* 
 	* Coordinate system:
 	* - Right-handed coordniate system
@@ -22,45 +21,54 @@ namespace vx
 	* 
 	* Mathematical layout (row x column):
 	* 
-	* | R00 R01 R02 Tx  | | 0 4 8 12 | 
-	* | R10 R11 R12 Ty  | | 1 5 9 13 | 
-	* | R20 R21 R22 Tz  | | 2 6 10 14 |
-	* |  0   0   0   1  | | 3 7 11 15 |
+	* | R00 R01 R02 Tx  | 
+	* | R10 R11 R12 Ty  | 
+	* | R20 R21 R22 Tz  | 
+	* |  0   0   0   1  | 
 	* 
-	* Memory layout column: 
-	* | R00 R10 R20 0 | R01 R11 R21 0 | R02 R12 R32 0 | Tx Ty Tz 1 |
-	*		[0..3]			[4..7]		   [8..11]		 [12..15]
+	* Memory layout (column-major): 
+	*	Column 0: [ R00 R10 R20 0 ] // indices [0..3]
+	*	Column 1: [ R01 R11 R21 0 ]	// indices [4..7]
+	*	Column 2: [	R02 R12 R32 0 ]	// indices [8..11]
+	*	Column 3: [	Tx	Ty	Tz	1 ]	// indices [12..15]
 	*	
+	* Components:
 	* - Rij: Rotation/scale components
 	* - Tx, Ty, Tz: Translation components
 	* - Bottom row is [0, 0,0, 1] for affine matrices
 	* 
 	* Basis representation:
+	* 
+	*	|X.x  Y.x  Z.x  T.x|
+	*	|X.y  Y.y  Z.y  T.y|
+	*	|X.z  Y.z  Z.z  T.z|
+	*	| 0    0    0    1 |
+	* 
 	* - Columns 0-2 represent basis vectors (X, Y, Z)
-	* - Column 3 reprensent atranslation
-	* 
-	* |X.x  Y.x  Z.x  T.x|
-	* |X.y  Y.y  Z.y  T.y|
-	* |X.z  Y.z  Z.z  T.z|
-	* | 0    0    0    1 |
-	* 
+	* - Column 3 reprensent translation
 	* 
 	* Vector sematics:
-	*  - Direction vectors assume w = 0 (no translation)
+	*  - Direction vectors assume w = 0 (no translation applied)
 	*  - Position vectors assume w = 1 (translation applied)
 	*
 	* 
 	* Affine helpers:
-	* - Multiply3x3(): ignores translation
-	* - TransformDirection(): direction vectors
-	* - Transform(): position vectors
+	* - Multiply3x3()		: ignores translation
+	* - TransformDirection(): direction vectors (w = 0)
+	* - Transform()			: position vectors (w = 1)
+	* 
+	* Transform composition example:
+	*	Mat44 M = Translation(t) * Rotation(q) * Scale(s)
+	* 
+	* - Mat44 Mtr = Mat44::RotationTranslation(q, t) * Mat44:Scale(s)
+	* - Mat44 Mtrs = Mat44::RotationTranslation(q, t) * Mat44:Scale(s)
+	* - translate a Matrix M; M.Multiple(vec4(p, 1.0f)) etc
 	* 
 	* 
-	*	NOTE:
-	*  Intentionally Used Mat44 as Mat33
-	* - Mat44 is 64 bytes and modern cache-line aligned 
-	* - Mat33 (48 bytes simded) straddles cache lines in array (would reacquire padding) 
-	* - Mat44 already provides all 3x3 rotation functionality 
+	* Performance note:
+	* - Mat44 is 64 bytes (cache-line aligned).
+	* - Using Mat44 avoid Mat33 padding/straddling issues in arrays.
+	* - Upper-left 3x3 region provides full rotation functionality.
 	*/
 	class alignas(16) Mat44
 	{
@@ -183,6 +191,7 @@ namespace vx
 		/// Invert affine matrix (rotation + translation only)
 		/// Undefined behaviour, if matrix contains scale or shear
 		VX_INLINE Mat44 InverseAffine() const;
+		VX_INLINE Mat44 Inverse() const;
 
 		/// Multiply vector by upper 3x3 matrix
 		VX_INLINE Vec3 Multiply3x3(const Vec3& rhs) const;
@@ -203,7 +212,8 @@ namespace vx
 		static VX_INLINE Mat44 SkewSymmetric3x3(const Vec3& rhs);
 		VX_INLINE Mat44 operator+(const Mat44& rhs)const = delete;
 		VX_INLINE Mat44& operator+=(const Mat44& rhs) = delete;
-
+		/// Multiply Affine operator
+		VX_INLINE Mat44 operator*(const Mat44& rhs) const { return MultiplyAffine(rhs); }
 
 		/// Transform a position vector by this matrix.
 		/// Applies rotation and translation
@@ -232,10 +242,23 @@ namespace vx
 		/// matrix must contain pure rotation (no scale/shear)
 		VX_INLINE Quat GetRotationQuat() const;
 
-		/// Pre-scale affine matrix (scale axes)
-		VX_INLINE Mat44 PreScaled(const Vec3& scale);
 		/// Post-scale affine matrix
-		VX_INLINE Mat44 PostScaled(const Vec3& scale);
+		VX_INLINE void ScaleGlobal(const Vec3& scale);
+		VX_INLINE Mat44 ScaledGlobal(const Vec3& scale);
+		/// M = M * S
+		/// Pre-scale affine matrix (scale axes)
+		VX_INLINE void ScaleLocal(const Vec3& scale);
+		VX_INLINE Mat44 ScaledLocal(const Vec3& scale);
+
+		/// M = T * M (World space)
+		/// object along fixed X, Y, Z axes of universe
+		VX_INLINE void TranslateGlobal(const Vec3& t);
+		/// M = M * T
+		/// move obj along its basis axes
+		VX_INLINE void TranslateLocal(const Vec3& t);
+		VX_INLINE static Mat44 TranslatedLocal(const Mat44& M, const Vec3& t);
+		VX_INLINE static Mat44 TranslatedGlobal(const Mat44& M, const Vec3& t);
+
 
 		/// Decomposing matrix into rotation+translation matrix and vector scale
 		/// Uses Gram-Schmidt orthonormalisation
@@ -246,6 +269,9 @@ namespace vx
 		VX_INLINE Mat44 Decompose(Vec3& o_scale) const;
 		/// Orthonormalise upper 3x3 basis vectors
 		VX_INLINE void MakeOrthonormal();
+
+		const float* Data() const { return &mFloats[0]; }
+		float* Data() { return &mFloats[0]; }
 
 		friend std::ostream& operator<<(std::ostream& os, const Mat44& m);
 	private:

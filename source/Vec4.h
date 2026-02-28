@@ -1,9 +1,6 @@
 #pragma once
 
 #include "Core.h"
-//#include "VxMath.h"
-
-
 
 namespace vx
 {
@@ -57,11 +54,11 @@ namespace vx
 		/// Component accessor by index
 		/// @param i Index (0 = x, 1 = y, 2 = z, 3 = w)
 		/// @return reference to component
-		VX_INLINE float& operator[](uint32_t i);
+		VX_INLINE float& operator[](uint32 i);
 		/// Component accessor by index const
 		/// @param i Index (0 = x, 1 = y, 2 = z, 3 = w)
 		/// @return const reference to component
-		VX_INLINE float const& operator[](uint32_t i) const;
+		VX_INLINE float const& operator[](uint32 i) const;
 
 		/// Read component by simd register lane index
 		/// @param v vector
@@ -121,6 +118,10 @@ namespace vx
 		VX_INLINE bool operator == (const Vec4& rhs) const;
 		VX_INLINE bool operator != (const Vec4& rhs) const { return !(*this == rhs); }
 
+
+		VX_INLINE void Add3(const Vec3& v3);
+		VX_INLINE void Multiply3(const Vec3& v3);
+
 		/// smallest component value
 		VX_INLINE float MinComponent() const;
 		/// Largest component value
@@ -130,12 +131,14 @@ namespace vx
 		/// @return 0 for x. 
 		/// @return 1 for y.
 		/// @return 2 for z.
-		VX_INLINE int MinAxis() const;
+		/// @return 3 for w.
+		VX_INLINE Axis MinAxis() const;
 		/// Index of largest component
 		/// @return 0 for x. 
 		/// @return 1 for y.
 		/// @return 2 for z.
-		VX_INLINE int MaxAxis() const;
+		/// @return 3 for w.
+		VX_INLINE Axis MaxAxis() const;
 
 		/// @return a vector from the smallest component of lhs & rhs vectors
 		VX_INLINE static Vec4 Min(const Vec4& lhs, const Vec4& rhs);
@@ -187,7 +190,7 @@ namespace vx
 		/// @return this vector flipped
 		template<int X, int Y, int Z, int W>
 		VX_INLINE Vec4 FlipSign() const;
-		template<int X, int Y, int Z, int W>
+		template<Axis Swizzle_X, Axis Swizzle_Y, Axis Swizzle_Z, Axis Swizzle_W>
 		VX_INLINE [[nodiscard]] Vec4 Swizzle() const;
 
 		/// Component-wise Reciprocal
