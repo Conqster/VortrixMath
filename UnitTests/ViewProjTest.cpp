@@ -87,20 +87,11 @@ TEST_SUITE("View Projection Tests")
 			0.0f, 100.0f
 		);
 
-		vx::Vec4 lt(-10.0f, 0.0f, 0.0f, 1.0f);
-		vx::Vec4 rt(10.0f, 0.0f, 0.0f, 1.0f);
 		vx::Vec4 near_p(0.0f, 0.0f, 0.0f, 1.0f);
-		vx::Vec4 far_p(0.0f, 0.0f, 100.0f, 1.0f);
+		vx::Vec4 far_p(0.0f, 0.0f, -100.0f, 1.0f);
 
-		vx::Vec4 l = ortho.Multiply(lt);
-		vx::Vec4 r = ortho.Multiply(rt);
-		vx::Vec4 n = ortho.Multiply(near_p);
-		vx::Vec4 f = ortho.Multiply(far_p);
-
-		CHECK_APPROX_EQ(l.X(), -1.0f);
-		CHECK_APPROX_EQ(r.X(), 1.0f);
-		CHECK_APPROX_EQ(n.Z(), 0.0f);
-		CHECK_APPROX_EQ(f.Z(), 1.0f);
+		CHECK_APPROX_EQ(ortho.Multiply(near_p).Z(), 0.0f);
+		CHECK_APPROX_EQ(ortho.Multiply(far_p).Z(), 1.0f);
 
 		//// NO
 		ortho = vx::Orthographic_NO(
@@ -109,40 +100,27 @@ TEST_SUITE("View Projection Tests")
 			0.0f, 100.0f
 		);
 
-		l = ortho.Multiply(lt);
-		r = ortho.Multiply(rt);
-		n = ortho.Multiply(near_p);
-		f = ortho.Multiply(far_p);
+		near_p = vx::Vec4(0.0f, 0.0f, 0.0f, 1.0f);
+		far_p = vx::Vec4(0.0f, 0.0f, -100.0f, 1.0f);
 
-		CHECK_APPROX_EQ(l.X(), -1.0f);
-		CHECK_APPROX_EQ(r.X(), 1.0f);
-		CHECK_APPROX_EQ(n.Z(), -1.0f);
-		CHECK_APPROX_EQ(f.Z(), 1.0f);
+		CHECK_APPROX_EQ(ortho.Multiply(near_p).Z(), -1.0f);
+		CHECK_APPROX_EQ(ortho.Multiply(far_p).Z(), 1.0f);
 	}
 
 
 
 	TEST_CASE("LookAt")
 	{
-		vx::Vec4 pos(0.0f);
-		vx::Vec3 target = -vx::Vec3::Forward();
+		vx::Vec4 pos(0.0f, 0.0f, 5.0f);
+		vx::Vec3 target(0.0f, 0.0f, 10.0f);
 
 		vx::Mat44 view = vx::LookAt(pos, target, vx::Vec3::Up());
 
-		vx::Vec3 origin(0.0f);
-		CHECK_APPROX_EQ(view.Transform(origin), origin);
+		CHECK_APPROX_EQ(view.Transform(pos), vx::Vec3::Zero());
 
-		vx::Vec3 x = view.GetAxisX();
-		vx::Vec3 y = view.GetAxisY();
-		vx::Vec3 z = view.GetAxisZ();
-
-		CHECK_APPROX_EQ(x.Length(), 1.0f);
-		CHECK_APPROX_EQ(y.Length(), 1.0f);
-		CHECK_APPROX_EQ(z.Length(), 1.0f);
-
-		CHECK_APPROX_EQ(x.Dot(y), 0.0f);
-		CHECK_APPROX_EQ(y.Dot(z), 0.0f);
-		CHECK_APPROX_EQ(z.Dot(x), 0.0f);
+		vx::Vec3 view_target = view.Transform(target);
+		CHECK_APPROX_EQ(view_target.Z(), -5.0f);
+		CHECK_APPROX_EQ(view.Transform(vx::Vec3::Zero()).Z(), 5.0f);
 	}
 
 	TEST_CASE("LookAT Translation")

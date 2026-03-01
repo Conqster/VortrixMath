@@ -19,27 +19,44 @@ namespace vx
 	/// i.e scene (forward) is -Vec3::Forward(), Vec3(0.0f, 0.0f, -1.0f).
 
 
+	/// Creates a view matrix from a basis vectors
+	/// @param pos view location (eye)
+	/// @param side Screen Right (+X View Space/-X World Space)
+	/// @param up Screen Up (+Y View Space)
+	/// @param fwd World forward vector (+Z World Space)
+	static VX_INLINE Mat44 ViewMatrixFromBasis(const Vec3& pos, const Vec3& right, const Vec3& up, const Vec3& forward)
+	{
+		//World space ro RH View Space (-Z forward)
+		/// forward as World +Z 
+		/// in View Space 'forward' to be -Z
+		/// 
+		Vec3 view_dir = -forward;
+		return Mat44(Vec4(right.X(), up.X(), view_dir.X(), 0.0f),
+			Vec4(right.Y(), up.Y(), view_dir.Y(), 0.0f),
+			Vec4(right.Z(), up.Z(), view_dir.Z(), 0.0f),
+			Vec4(-Vec3::Dot(right, pos),
+				-Vec3::Dot(up, pos),
+				-Vec3::Dot(view_dir, pos),
+				1.0f));
+	}
+
 	/// Build a right handed look at view matrix
 	/// 
 	/// @param pos Camera position
 	/// @param target Point camera is looking at
 	/// @param up vector of camera upward vector (assumed normalised)
-	static VX_INLINE Mat44 LookAt(const Vec3& pos,
-								  const Vec3& target,
-								  const Vec3& up)
+	static VX_INLINE Mat44 LookAt(const Vec3& pos, const Vec3& target, const Vec3& up)
 	{
-		const Vec3 fwd = (target - pos).Normalised();
-		const Vec3 rt = Vec3::Cross(fwd, up);
-		const Vec3 u = Vec3::Cross(rt, fwd);
+		//X -> Y -> Z -> X
 
-		Vec4 x = Vec4(rt.X(), u.X(), -fwd.X(), 0.0f);
-		Vec4 y = Vec4(rt.Y(), u.Y(), -fwd.Y(), 0.0f);
-		Vec4 z = Vec4(rt.Z(), u.Z(), -fwd.Z(), 0.0f);
-		Vec4 t = Vec4(-Vec3::Dot(rt, pos),
-					  -Vec3::Dot(u, pos),
-					  Vec3::Dot(fwd, pos),
-					  1.0f);
-		return Mat44(x, y, z, t);
+		/// X = Y x Z
+		/// Y = Z x X
+		/// Z = X x Y
+		const Vec3 z_axis = (target - pos).Normalise();
+		const Vec3 x_axis = Vec3::Cross(z_axis, up).Normalised();
+		const Vec3 y_axis = Vec3::Cross(x_axis, z_axis);
+
+		return ViewMatrixFromBasis(pos, x_axis, y_axis, z_axis);
 	}
 
 
@@ -76,21 +93,17 @@ namespace vx
 	/// @param aspect Aspect ratio of the field of veiw in x direction (ratio of x(width) to y(height).
 	/// @param near Distance from view to the near clipping plane
 	/// @param far Distance from view to the far clipping plane
-	static VX_INLINE Mat44 Perspective_NO(float fov,
-										    float aspect,
-										    float zNear,
-										    float zFar)
+	static VX_INLINE Mat44 Perspective_NO(float fov, float aspect, float zNear, float zFar)
 	{
 		float h = 1.0f / VxTan(0.5f * fov);
 		float w = h / aspect;
-		// [-1, 1]
-		float neg_diff_ratio = -1.0f / (zFar - zNear);
+		float diff = zFar - zNear;
 
 		return Mat44(
 			Vec4(w, 0.0f, 0.0f, 0.0f),
 			Vec4(0.0f, h, 0.0f, 0.0f),
-			Vec4(0.0f, 0.0f, (zFar + zNear) * neg_diff_ratio, -1.0f),
-			Vec4(0.0f, 0.0f, (2.0f * zFar * zNear) * neg_diff_ratio, 0.0f));
+			Vec4(0.0f, 0.0f, -(zFar + zNear)/diff, -1.0f),
+			Vec4(0.0f, 0.0f, -(2.0f * zFar * zNear)/diff, 0.0f));
 	}
 
 	/// Create a right handed perspective-view,
@@ -100,10 +113,7 @@ namespace vx
 	/// @param aspect Aspect ratio of the field of veiw in x direction (ratio of x(width) to y(height).
 	/// @param near Distance from view to the near clipping plane
 	/// @param far Distance from view to the far clipping plane
-	static VX_INLINE Mat44 Perspective(float fov,
-									   float aspect,
-									   float zNear,
-									   float zFar)
+	static VX_INLINE Mat44 Perspective(float fov, float aspect, float zNear, float zFar)
 	{
 #if VX_RENDER_CLIP_SPACE == VX_RENDER_CLIP_SPACE_ZO
 		return Perspective_ZO(fov, aspect, zNear, zFar);
@@ -113,6 +123,11 @@ namespace vx
 
 	}
 
+
+	/// Create a right handed orthographic-view
+	/// near and far planes correspond to z normalised device 0 and +1 respectively
+	/// 
+	/// for right handed (Vulkan rendering volume) Screen (0, 0) Top-Left
 	static VX_INLINE Mat44 Orthographic_ZO(float left,
 		float right,
 		float bottom,
@@ -127,11 +142,15 @@ namespace vx
 		return Mat44(
 			Vec4(2.0f * inv_rt_diff, 0.0f, 0.0f, 0.0f),
 			Vec4(0.0f, 2.0f * inv_tb_diff, 0.0f, 0.0f),
-			Vec4(0.0f, 0.0f, inv_fn_diff, 0.0f),
+			Vec4(0.0f, 0.0f, -inv_fn_diff, 0.0f),
 			Vec4(-(right + left) * inv_rt_diff, -(top + bottom) * inv_tb_diff, -zNear * inv_fn_diff, 1.0f));
 	}
 	
 
+	/// Create a right handed orthographic-view
+	/// near and far planes correspond to z normalised device -1 and +1 respectively
+	/// 
+	/// for (OpenGL rendering volume) Screen (0, 0) Bottom-Left
 	static VX_INLINE Mat44 Orthographic_NO(float left,
 										   float right,
 										   float bottom,
@@ -146,7 +165,22 @@ namespace vx
 		return Mat44(
 			Vec4(2.0f * inv_rt_diff, 0.0f, 0.0f, 0.0f),
 			Vec4(0.0f, 2.0f * inv_tb_diff, 0.0f, 0.0f),
-			Vec4(0.0f, 0.0f, 2.0f * inv_fn_diff, 0.0f),
+			Vec4(0.0f, 0.0f, -2.0f * inv_fn_diff, 0.0f),
 			Vec4(-(right + left) * inv_rt_diff, -(top + bottom) * inv_tb_diff, -(zFar + zNear) * inv_fn_diff, 1.0f));
+	}
+
+
+
+	/// Create a right handed orthographic-view,
+	/// Default near and far is NO correspond to z normalised device 0 and +1 respectively
+	/// Default Screen (0, 0) Bottom-Left
+	static VX_INLINE Mat44 Orthographic(float left, float right, float bottom, 
+										float top, float zNear, float zFar)
+	{
+#if VX_RENDER_CLIP_SPACE == VX_RENDER_CLIP_SPACE_ZO
+		return Orthographic_ZO(left, right, bottom, top, zNear, zFar);
+#else VX_RENDER_CLIP_SPACE == VX_RENDER_CLIP_SPACE_NO
+		return Orthographic_NO(left, right, bottom, top, zNear, zFar);
+#endif // VX_RENDER_CLIP_SPACE == VX_RENDER_CLIP_SPACE_ZO
 	}
 }
